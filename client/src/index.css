@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 25% 97%;
+    --foreground: 222 47% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 10%;
+
+    --primary: 224 52% 14%;
+    --primary-hover: 224 48% 20%;
+    --primary-light: 224 40% 94%;
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 221 83% 58%;
+    --secondary-hover: 221 83% 52%;
+    --secondary-light: 221 83% 95%;
+    --secondary-foreground: 210 20% 98%;
+
+    --success: 152 64% 32%;
+    --success-light: 152 55% 94%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 30 92% 46%;
+    --warning-light: 32 95% 94%;
+    --warning-foreground: 0 0% 100%;
+
+    --caution: 45 93% 42%;
+    --caution-light: 48 96% 93%;
+    --caution-foreground: 0 0% 100%;
+
+    --danger: 356 72% 50%;
+    --danger-light: 356 80% 95%;
+    --danger-foreground: 0 0% 100%;
+
+    --muted: 220 18% 94%;
+    --muted-foreground: 220 12% 42%;
+
+    --accent: 221 83% 96%;
+    --accent-foreground: 224 52% 16%;
+
+    --border: 220 16% 89%;
+    --input: 220 16% 89%;
+    --ring: 221 83% 58%;
+
+    --radius: 0.875rem;
+
+    --shadow-color: 224 40% 20%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 1px hsl(var(--shadow-color) / 0.04);
+    --shadow-md: 0 4px 12px hsl(var(--shadow-color) / 0.08), 0 2px 4px hsl(var(--shadow-color) / 0.05);
+    --shadow-lg: 0 12px 32px hsl(var(--shadow-color) / 0.12), 0 4px 8px hsl(var(--shadow-color) / 0.06);
+  }
+
+  .dark {
+    --background: 224 28% 9%;
+    --foreground: 210 20% 94%;
+
+    --card: 224 24% 13%;
+    --card-foreground: 210 20% 94%;
+
+    --primary: 221 83% 65%;
+    --primary-hover: 221 83% 72%;
+    --primary-light: 224 24% 18%;
+    --primary-foreground: 224 40% 10%;
+
+    --secondary: 221 83% 65%;
+    --secondary-hover: 221 83% 72%;
+    --secondary-light: 221 40% 20%;
+    --secondary-foreground: 224 40% 10%;
+
+    --success: 152 55% 52%;
+    --success-light: 152 40% 16%;
+    --success-foreground: 152 60% 8%;
+
+    --warning: 30 90% 60%;
+    --warning-light: 30 50% 16%;
+    --warning-foreground: 30 60% 8%;
+
+    --caution: 45 85% 58%;
+    --caution-light: 45 45% 16%;
+    --caution-foreground: 45 60% 8%;
+
+    --danger: 356 80% 65%;
+    --danger-light: 356 45% 18%;
+    --danger-foreground: 356 60% 8%;
+
+    --muted: 224 20% 17%;
+    --muted-foreground: 220 12% 65%;
+
+    --accent: 221 40% 20%;
+    --accent-foreground: 210 20% 94%;
+
+    --border: 224 18% 20%;
+    --input: 224 18% 20%;
+    --ring: 221 83% 65%;
+
+    --shadow-color: 224 60% 2%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.4), 0 1px 1px hsl(var(--shadow-color) / 0.3);
+    --shadow-md: 0 4px 12px hsl(var(--shadow-color) / 0.45), 0 2px 4px hsl(var(--shadow-color) / 0.3);
+    --shadow-lg: 0 12px 32px hsl(var(--shadow-color) / 0.55), 0 4px 8px hsl(var(--shadow-color) / 0.35);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased transition-colors duration-200;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+@layer utilities {
+  .shadow-soft-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  .shadow-soft-md {
+    box-shadow: var(--shadow-md);
+  }
+  .shadow-soft-lg {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-page {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
