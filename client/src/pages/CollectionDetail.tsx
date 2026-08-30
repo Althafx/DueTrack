@@ -5,6 +5,7 @@ import { ArrowLeft, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,9 +17,10 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useCollection, useUpdateCollection } from "@/hooks/useCollections";
 import { useEmployees } from "@/hooks/useEmployees";
-import { usePayments } from "@/hooks/usePayments";
+import { usePayments, useUpdatePayment } from "@/hooks/usePayments";
 import { getErrorMessage } from "@/services/api";
 import { formatCurrency, formatDate, formatDateTime, toDateInputValue } from "@/lib/formatters";
+import type { PaymentDTO, PaymentMethod } from "@shared/types";
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   CASH: "Cash",
@@ -30,11 +32,13 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
 export default function CollectionDetail() {
   const { id } = useParams<{ id: string }>();
   const [editOpen, setEditOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentDTO | null>(null);
 
   const { data: collection, isLoading } = useCollection(id);
   const { data: payments, isLoading: paymentsLoading } = usePayments(id);
   const { data: employees } = useEmployees();
   const updateMutation = useUpdateCollection(id ?? "");
+  const updatePaymentMutation = useUpdatePayment();
 
   if (isLoading || !collection) {
     return <LoadingState label="Loading collection..." />;
@@ -88,7 +92,7 @@ export default function CollectionDetail() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Status</p>
                 <div className="mt-1">
-                  <StatusBadge status={collection.status} receivedAmount={collection.receivedAmount} totalAmount={collection.totalAmount} />
+                  <StatusBadge status={collection.status} />
                 </div>
               </div>
               <div>
@@ -134,6 +138,7 @@ export default function CollectionDetail() {
                       <TableHead>Amount</TableHead>
                       <TableHead>Method</TableHead>
                       <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -144,6 +149,11 @@ export default function CollectionDetail() {
                         <TableCell className="font-medium text-success">{formatCurrency(p.amount)}</TableCell>
                         <TableCell>{PAYMENT_METHOD_LABEL[p.paymentMethod]}</TableCell>
                         <TableCell className="text-muted-foreground">{p.remarks || "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => setEditingPayment(p)}>
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -155,9 +165,14 @@ export default function CollectionDetail() {
                   <MobileCard key={p.id}>
                     <MobileCardHeader>
                       <span className="text-lg font-semibold text-success">{formatCurrency(p.amount)}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                        {PAYMENT_METHOD_LABEL[p.paymentMethod]}
-                      </span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                          {PAYMENT_METHOD_LABEL[p.paymentMethod]}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingPayment(p)}>
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </MobileCardHeader>
                     <div className="divide-y divide-border">
                       <MobileCardRow label="Date" value={formatDateTime(p.paymentDate)} />
@@ -171,6 +186,22 @@ export default function CollectionDetail() {
           )}
         </CardContent>
       </Card>
+
+      <EditPaymentDialog
+        payment={editingPayment}
+        onOpenChange={(open) => !open && setEditingPayment(null)}
+        onSubmit={async (payload) => {
+          if (!editingPayment) return;
+          try {
+            await updatePaymentMutation.mutateAsync({ id: editingPayment.id, payload });
+            toast.success("Payment updated");
+            setEditingPayment(null);
+          } catch (error) {
+            toast.error(getErrorMessage(error));
+          }
+        }}
+        isPending={updatePaymentMutation.isPending}
+      />
     </div>
   );
 }
@@ -256,6 +287,100 @@ function EditCollectionDialog({
           <div className="space-y-2">
             <Label htmlFor="editNotes">Notes</Label>
             <Input id="editNotes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditPaymentDialog({
+  payment,
+  onOpenChange,
+  onSubmit,
+  isPending,
+}: {
+  payment: PaymentDTO | null;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (payload: { amount: number; paymentMethod: PaymentMethod; remarks?: string }) => void;
+  isPending: boolean;
+}) {
+  if (!payment) return null;
+
+  return <EditPaymentForm key={payment.id} payment={payment} onOpenChange={onOpenChange} onSubmit={onSubmit} isPending={isPending} />;
+}
+
+function EditPaymentForm({
+  payment,
+  onOpenChange,
+  onSubmit,
+  isPending,
+}: {
+  payment: PaymentDTO;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (payload: { amount: number; paymentMethod: PaymentMethod; remarks?: string }) => void;
+  isPending: boolean;
+}) {
+  const [amount, setAmount] = useState(String(payment.amount));
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(payment.paymentMethod);
+  const [remarks, setRemarks] = useState(payment.remarks ?? "");
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Payment</DialogTitle>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const numericAmount = Number(amount);
+            if (!numericAmount || numericAmount <= 0) {
+              toast.error("Enter a valid amount");
+              return;
+            }
+            onSubmit({ amount: numericAmount, paymentMethod, remarks: remarks || undefined });
+          }}
+        >
+          <p className="text-sm text-muted-foreground">
+            Correcting this payment updates the collection totals immediately, including in {payment.employee.name}'s own
+            collection list.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="editPaymentAmount">Amount (₹)</Label>
+            <Input
+              id="editPaymentAmount"
+              type="number"
+              min={1}
+              required
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Payment Method</Label>
+            <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="editPaymentRemarks">Remarks</Label>
+            <Textarea id="editPaymentRemarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional" />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isPending}>

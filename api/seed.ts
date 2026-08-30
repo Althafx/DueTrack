@@ -27,7 +27,7 @@ async function seed() {
   console.log("Creating users...");
   const dealer = await User.create({
     name: "Demo Dealer",
-    email: "dealer@example.com",
+    username: "dealer",
     password: "password123",
     phone: "9876543210",
     role: "DEALER",
@@ -36,7 +36,7 @@ async function seed() {
 
   const employee1 = await User.create({
     name: "Rahul Sharma",
-    email: "employee@example.com",
+    username: "rahul",
     password: "password123",
     phone: "9876500001",
     role: "EMPLOYEE",
@@ -45,7 +45,7 @@ async function seed() {
 
   const employee2 = await User.create({
     name: "Priya Verma",
-    email: "priya@example.com",
+    username: "priya",
     password: "password123",
     phone: "9876500002",
     role: "EMPLOYEE",
@@ -150,9 +150,9 @@ async function seed() {
 
   console.log("\nSeed complete.\n");
   console.log("Demo credentials (development only):");
-  console.log("  Dealer:   dealer@example.com / password123");
-  console.log("  Employee: employee@example.com / password123");
-  console.log("  Employee: priya@example.com / password123\n");
+  console.log("  Dealer:   dealer / password123");
+  console.log("  Employee: rahul / password123");
+  console.log("  Employee: priya / password123\n");
 
   await mongoose.disconnect();
 }

@@ -43,6 +43,7 @@ cp .env.example .env
 | `MONGODB_URI` | Full MongoDB Atlas connection string, including the database name (e.g. `.../payment-collection-system?retryWrites=true&w=majority`) |
 | `JWT_SECRET` | Long random string used to sign auth tokens. Generate one with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `JWT_EXPIRES_IN` | Session length, e.g. `7d` |
+| `PASSWORD_ENCRYPTION_KEY` | 32-byte key, hex-encoded (64 hex chars), used to store a reversible copy of each password so a dealer can view/change employee and their own passwords. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `NODE_ENV` | `development` locally, `production` on Vercel |
 | `PORT` | Local API port (default `5000`) |
 
@@ -82,11 +83,11 @@ handful of clients/collections/payments in mixed states so the app is immediatel
 
 **Demo credentials (development only):**
 
-| Role | Email | Password |
+| Role | Username | Password |
 |---|---|---|
-| Dealer | `dealer@example.com` | `password123` |
-| Employee | `employee@example.com` | `password123` |
-| Employee | `priya@example.com` | `password123` |
+| Dealer | `dealer` | `password123` |
+| Employee | `rahul` | `password123` |
+| Employee | `priya` | `password123` |
 
 For a real deployment, either skip `npm run seed` entirely or edit `api/seed.ts` to create your
 actual dealer/employee accounts instead of the demo dataset.
@@ -117,6 +118,7 @@ In your Vercel project → **Settings → Environment Variables**, add:
 | `MONGODB_URI` | Your Atlas connection string (production database) |
 | `JWT_SECRET` | A different, production-only secret (do not reuse your local one) |
 | `JWT_EXPIRES_IN` | `7d` |
+| `PASSWORD_ENCRYPTION_KEY` | A different, production-only 64-hex-char key (do not reuse your local one) |
 | `NODE_ENV` | `production` |
 
 After deploying, in Atlas **Network Access**, either allow `0.0.0.0/0` (Vercel's serverless functions

@@ -82,7 +82,7 @@ export default function ClientDetail() {
                           <CollectionProgress received={c.receivedAmount} total={c.totalAmount} />
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                          <StatusBadge status={c.status} />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(c.dueDate)}</TableCell>
                       </TableRow>
@@ -97,7 +97,7 @@ export default function ClientDetail() {
                     <MobileCard interactive>
                       <MobileCardHeader>
                         <p className="font-semibold text-foreground">{c.assignedEmployee.name}</p>
-                        <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                        <StatusBadge status={c.status} />
                       </MobileCardHeader>
                       <CollectionProgress received={c.receivedAmount} total={c.totalAmount} className="mb-3" />
                       <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />

@@ -8,7 +8,7 @@ export function toUserDTO(user: IUser): UserDTO {
   return {
     id: user.id,
     name: user.name,
-    email: user.email,
+    username: user.username,
     phone: user.phone,
     role: user.role,
     status: user.status,
@@ -35,7 +35,7 @@ const DELETED_CLIENT_PLACEHOLDER: Omit<ClientDTO, "id" | "createdAt"> = {
 
 const DELETED_EMPLOYEE_PLACEHOLDER: Omit<UserDTO, "id" | "createdAt"> = {
   name: "Deleted employee",
-  email: "",
+  username: "",
   phone: "",
   role: "EMPLOYEE",
   status: "INACTIVE",
@@ -94,7 +94,7 @@ export function toPaymentDTO(payment: IPayment & { client: IClient | null; emplo
     : {
         id: "",
         name: payment.employeeName,
-        email: "",
+        username: "",
         phone: "",
         role: "EMPLOYEE" as const,
         status: "INACTIVE" as const,

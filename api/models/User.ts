@@ -1,12 +1,14 @@
 import { Schema, model, models, type Document, type Model } from "mongoose";
 import bcrypt from "bcryptjs";
 import type { Role, UserStatus } from "@shared/types";
+import { encrypt } from "../utils/crypto";
 
 export interface IUser extends Document {
   name: string;
-  email: string;
+  username: string;
   phone: string;
   password: string;
+  encryptedPassword: string;
   role: Role;
   status: UserStatus;
   createdAt: Date;
@@ -17,7 +19,7 @@ interface IUserModel extends Model<IUser> {}
 
 const userSchema = new Schema<IUser>({
   name: { type: String, required: true, trim: true },
-  email: {
+  username: {
     type: String,
     required: true,
     unique: true,
@@ -26,14 +28,17 @@ const userSchema = new Schema<IUser>({
   },
   phone: { type: String, required: true, trim: true },
   password: { type: String, required: true, select: false, minlength: 6 },
+  encryptedPassword: { type: String, required: true, select: false },
   role: { type: String, enum: ["DEALER", "EMPLOYEE"], required: true },
   status: { type: String, enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE" },
   createdAt: { type: Date, default: Date.now },
 });
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("validate", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  const plaintext = this.password;
+  this.password = await bcrypt.hash(plaintext, 10);
+  this.encryptedPassword = encrypt(plaintext);
   next();
 });
 

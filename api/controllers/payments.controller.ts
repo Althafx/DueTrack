@@ -27,6 +27,12 @@ export const createPaymentSchema = z.object({
   remarks: z.string().optional(),
 });
 
+export const updatePaymentSchema = z.object({
+  amount: z.number().positive("Amount must be greater than 0"),
+  paymentMethod: z.enum(["CASH", "BANK_TRANSFER", "UPI", "OTHER"]).optional(),
+  remarks: z.string().optional(),
+});
+
 const POPULATE = ["client", "employee"];
 
 export const listPayments = asyncHandler(async (req: Request, res: Response) => {
@@ -111,6 +117,50 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
 
     const populated = await Payment.findById(paymentId).populate(POPULATE);
     res.status(201).json({ payment: toPaymentDTO(populated as any) });
+  } finally {
+    await session.endSession();
+  }
+});
+
+export const updatePayment = asyncHandler(async (req: Request, res: Response) => {
+  const { amount, paymentMethod, remarks } = req.body as z.infer<typeof updatePaymentSchema>;
+
+  const session = await mongoose.startSession();
+
+  try {
+    await session.withTransaction(async () => {
+      const payment = await Payment.findById(req.params.id).session(session);
+      if (!payment) throw new ApiError(404, "Payment not found");
+
+      const collection = await Collection.findById(payment.collection).session(session);
+      if (!collection) throw new ApiError(404, "Collection not found");
+
+      const delta = amount - payment.amount;
+      const nextReceived = collection.receivedAmount + delta;
+
+      if (nextReceived < 0) {
+        throw new ApiError(400, "Amount cannot make the collected total negative");
+      }
+      if (nextReceived > collection.totalAmount) {
+        throw new ApiError(
+          400,
+          `Amount cannot exceed the collection's total of ${collection.totalAmount}`
+        );
+      }
+
+      payment.amount = amount;
+      if (paymentMethod) payment.paymentMethod = paymentMethod;
+      if (remarks !== undefined) payment.remarks = remarks;
+      await payment.save({ session });
+
+      collection.receivedAmount = nextReceived;
+      collection.remainingAmount = collection.totalAmount - nextReceived;
+      collection.status = computeStatus(collection.totalAmount, nextReceived);
+      await collection.save({ session });
+    });
+
+    const populated = await Payment.findById(req.params.id).populate(POPULATE);
+    res.json({ payment: toPaymentDTO(populated as any) });
   } finally {
     await session.endSession();
   }

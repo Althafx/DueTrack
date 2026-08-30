@@ -4,6 +4,7 @@ import {
   createEmployeeSchema,
   deleteEmployee,
   getEmployee,
+  getEmployeePassword,
   listEmployees,
   updateEmployee,
   updateEmployeeSchema,
@@ -19,6 +20,7 @@ router.use(requireAuth, requireRole("DEALER"));
 router.get("/", listEmployees);
 router.post("/", validateBody(createEmployeeSchema), createEmployee);
 router.get("/:id", getEmployee);
+router.get("/:id/password", getEmployeePassword);
 router.patch("/:id", validateBody(updateEmployeeSchema), updateEmployee);
 router.delete("/:id", deleteEmployee);
 

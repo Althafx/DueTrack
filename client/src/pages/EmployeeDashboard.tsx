@@ -82,7 +82,7 @@ export default function EmployeeDashboard() {
                         <Phone className="h-3 w-3" /> {c.client.phone}
                       </p>
                     </div>
-                    <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                    <StatusBadge status={c.status} />
                   </div>
                   <CollectionProgress received={c.receivedAmount} total={c.totalAmount} />
                 </CardContent>

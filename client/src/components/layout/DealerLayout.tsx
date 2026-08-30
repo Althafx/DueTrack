@@ -1,9 +1,25 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { History, LayoutDashboard, LogOut, Moon, Sun, Users, UserSquare2, Wallet } from "lucide-react";
+import {
+  ChevronsLeft,
+  ChevronsRight,
+  History,
+  LayoutDashboard,
+  LogOut,
+  Moon,
+  Sun,
+  UserCircle,
+  Users,
+  UserSquare2,
+  Wallet,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser, useLogout } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
+import { MyAccountDialog } from "@/components/shared/MyAccountDialog";
+
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -17,17 +33,30 @@ export function DealerLayout() {
   const { data: user } = useCurrentUser();
   const logoutMutation = useLogout();
   const { theme, toggleTheme } = useTheme();
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
 
   return (
     <div className="flex h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 overflow-y-auto border-r border-white/5 bg-primary text-primary-foreground md:flex md:flex-col">
-        <div className="flex items-start justify-between px-6 py-5">
-          <div>
-            <p className="text-lg font-semibold">
-              Due<span className="text-secondary">Track</span>
-            </p>
-            <p className="text-xs text-primary-foreground/60">Payment Collection System</p>
-          </div>
+      <aside
+        className={cn(
+          "hidden shrink-0 overflow-y-auto border-r border-white/5 bg-primary text-primary-foreground transition-all duration-200 md:flex md:flex-col",
+          collapsed ? "w-[72px]" : "w-64"
+        )}
+      >
+        <div className={cn("flex items-center gap-2 px-4 py-5", collapsed ? "flex-col" : "justify-between px-6")}>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold">
+                Due<span className="text-secondary">Track</span>
+              </p>
+              <p className="truncate text-xs text-primary-foreground/60">Payment Collection System</p>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -43,9 +72,11 @@ export function DealerLayout() {
             <NavLink
               key={to}
               to={to}
+              title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 cn(
                   "relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-primary-foreground/70 transition-all duration-150 hover:bg-white/10 hover:text-primary-foreground",
+                  collapsed && "justify-center px-0",
                   isActive && "bg-white/10 text-primary-foreground"
                 )
               }
@@ -58,24 +89,55 @@ export function DealerLayout() {
                       isActive ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <Icon className="h-4 w-4" />
-                  {label}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && label}
                 </>
               )}
             </NavLink>
           ))}
         </nav>
-        <div className="border-t border-white/10 p-4">
-          <p className="truncate text-sm font-medium">{user?.name}</p>
-          <p className="truncate text-xs text-primary-foreground/60">{user?.email}</p>
+        <div className="border-t border-white/10 p-3">
           <Button
             variant="ghost"
-            size="sm"
-            className="mt-3 w-full justify-start gap-2 text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground"
+            size="icon"
+            className="mb-2 w-full text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          </Button>
+          {collapsed ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mb-1 w-full text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground"
+              onClick={() => setAccountDialogOpen(true)}
+              title="My Account"
+            >
+              <UserCircle className="h-4 w-4" />
+            </Button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAccountDialogOpen(true)}
+              className="w-full rounded px-1 text-left hover:bg-white/5"
+            >
+              <p className="truncate text-sm font-medium">{user?.name}</p>
+              <p className="truncate text-xs text-primary-foreground/60">{user?.username}</p>
+            </button>
+          )}
+          <Button
+            variant="ghost"
+            size={collapsed ? "icon" : "sm"}
+            title={collapsed ? "Log out" : undefined}
+            className={cn(
+              "text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground",
+              collapsed ? "mt-1 w-full" : "mt-3 w-full justify-start gap-2"
+            )}
             onClick={() => logoutMutation.mutate()}
           >
             <LogOut className="h-4 w-4" />
-            Log out
+            {!collapsed && "Log out"}
           </Button>
         </div>
       </aside>
@@ -119,6 +181,8 @@ export function DealerLayout() {
           ))}
         </nav>
       </div>
+
+      <MyAccountDialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen} />
     </div>
   );
 }

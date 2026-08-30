@@ -91,7 +91,7 @@ export default function EmployeeCollectionDetail() {
         <CardContent className="space-y-2 pt-5">
           <div className="flex items-start justify-between">
             <p className="text-lg font-semibold">{collection.client.name}</p>
-            <StatusBadge status={collection.status} receivedAmount={collection.receivedAmount} totalAmount={collection.totalAmount} />
+            <StatusBadge status={collection.status} />
           </div>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Phone className="h-3.5 w-3.5" /> {collection.client.phone}

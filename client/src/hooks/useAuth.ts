@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMe, login, logout } from "@/services/auth";
-import type { LoginRequest } from "@shared/types";
+import { changeMyPassword, getMe, getMyPassword, login, logout } from "@/services/auth";
+import type { ChangePasswordRequest, LoginRequest } from "@shared/types";
 
 export function useCurrentUser() {
   return useQuery({
@@ -29,5 +29,19 @@ export function useLogout() {
       queryClient.setQueryData(["auth", "me"], null);
       queryClient.clear();
     },
+  });
+}
+
+export function useMyPassword(enabled: boolean) {
+  return useQuery({
+    queryKey: ["auth", "me", "password"],
+    queryFn: getMyPassword,
+    enabled,
+  });
+}
+
+export function useChangeMyPassword() {
+  return useMutation({
+    mutationFn: (payload: ChangePasswordRequest) => changeMyPassword(payload),
   });
 }

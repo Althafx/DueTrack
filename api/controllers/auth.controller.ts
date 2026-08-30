@@ -5,10 +5,15 @@ import { AUTH_COOKIE_NAME, COOKIE_MAX_AGE_MS, signToken } from "../utils/jwt";
 import { ApiError } from "../utils/status";
 import { toUserDTO } from "../utils/mappers";
 import { asyncHandler } from "../utils/asyncHandler";
+import { decrypt } from "../utils/crypto";
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
+});
+
+export const changeMyPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 function setCookieOptions() {
@@ -23,11 +28,11 @@ function setCookieOptions() {
 }
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body as z.infer<typeof loginSchema>;
+  const { username, password } = req.body as z.infer<typeof loginSchema>;
 
-  const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
+  const user = await User.findOne({ username: username.toLowerCase() }).select("+password");
   if (!user) {
-    throw new ApiError(401, "Invalid email or password");
+    throw new ApiError(401, "Invalid username or password");
   }
 
   if (user.status !== "ACTIVE") {
@@ -36,7 +41,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    throw new ApiError(401, "Invalid email or password");
+    throw new ApiError(401, "Invalid username or password");
   }
 
   const token = signToken({ sub: user.id, role: user.role });
@@ -51,4 +56,21 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
 
 export const me = asyncHandler(async (req: Request, res: Response) => {
   res.json({ user: toUserDTO(req.user!) });
+});
+
+export const getMyPassword = asyncHandler(async (req: Request, res: Response) => {
+  const user = await User.findById(req.user!.id).select("+encryptedPassword");
+  if (!user) throw new ApiError(404, "User not found");
+  res.json({ password: decrypt(user.encryptedPassword) });
+});
+
+export const changeMyPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { newPassword } = req.body as z.infer<typeof changeMyPasswordSchema>;
+  const user = await User.findById(req.user!.id).select("+password");
+  if (!user) throw new ApiError(404, "User not found");
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ message: "Password updated" });
 });

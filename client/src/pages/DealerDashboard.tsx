@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { CollectionProgress } from "@/components/shared/CollectionProgress";
 import { MobileCard, MobileCardHeader, MobileCardList, MobileCardRow } from "@/components/shared/MobileCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -165,7 +164,9 @@ export default function DealerDashboard() {
                         <TableRow>
                           <TableHead>Client</TableHead>
                           <TableHead>Employee</TableHead>
-                          <TableHead>Progress</TableHead>
+                          <TableHead>Collected</TableHead>
+                          <TableHead>Balance</TableHead>
+                          <TableHead>Total</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Due Date</TableHead>
                         </TableRow>
@@ -179,11 +180,11 @@ export default function DealerDashboard() {
                               </Link>
                             </TableCell>
                             <TableCell>{c.assignedEmployee.name}</TableCell>
-                            <TableCell className="min-w-[200px]">
-                              <CollectionProgress received={c.receivedAmount} total={c.totalAmount} />
-                            </TableCell>
+                            <TableCell className="text-success">{formatCurrency(c.receivedAmount)}</TableCell>
+                            <TableCell className="text-warning">{formatCurrency(c.remainingAmount)}</TableCell>
+                            <TableCell className="font-medium">{formatCurrency(c.totalAmount)}</TableCell>
                             <TableCell>
-                              <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                              <StatusBadge status={c.status} />
                             </TableCell>
                             <TableCell className="text-muted-foreground">{formatDate(c.dueDate)}</TableCell>
                           </TableRow>
@@ -201,10 +202,14 @@ export default function DealerDashboard() {
                               <p className="truncate font-semibold text-foreground">{c.client.name}</p>
                               <p className="truncate text-xs text-muted-foreground">{c.assignedEmployee.name}</p>
                             </div>
-                            <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                            <StatusBadge status={c.status} />
                           </MobileCardHeader>
-                          <CollectionProgress received={c.receivedAmount} total={c.totalAmount} className="mb-3" />
-                          <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />
+                          <div className="divide-y divide-border">
+                            <MobileCardRow label="Collected" value={<span className="text-success">{formatCurrency(c.receivedAmount)}</span>} />
+                            <MobileCardRow label="Balance" value={<span className="text-warning">{formatCurrency(c.remainingAmount)}</span>} />
+                            <MobileCardRow label="Total" value={formatCurrency(c.totalAmount)} />
+                            <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />
+                          </div>
                         </MobileCard>
                       </Link>
                     ))}

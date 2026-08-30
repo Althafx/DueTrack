@@ -30,7 +30,7 @@ export default function EmployeeDetail() {
             <CardTitle className="text-2xl">{employee.name}</CardTitle>
             <Badge variant={employee.status === "ACTIVE" ? "success" : "muted"}>{employee.status}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{employee.email}</p>
+          <p className="text-sm text-muted-foreground">{employee.username}</p>
           <p className="text-sm text-muted-foreground">{employee.phone}</p>
         </CardHeader>
       </Card>

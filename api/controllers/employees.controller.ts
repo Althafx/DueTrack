@@ -5,18 +5,19 @@ import { Collection } from "../models/Collection";
 import { ApiError } from "../utils/status";
 import { toUserDTO } from "../utils/mappers";
 import { asyncHandler } from "../utils/asyncHandler";
+import { decrypt } from "../utils/crypto";
 
 export const createEmployeeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(1, "Phone is required"),
-  email: z.string().email(),
+  username: z.string().min(1, "Username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const updateEmployeeSchema = z.object({
   name: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
-  email: z.string().email().optional(),
+  username: z.string().min(1).optional(),
   password: z.string().min(6).optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
@@ -50,6 +51,12 @@ export const getEmployee = asyncHandler(async (req: Request, res: Response) => {
   );
 
   res.json({ employee: toUserDTO(employee), performance });
+});
+
+export const getEmployeePassword = asyncHandler(async (req: Request, res: Response) => {
+  const employee = await User.findOne({ _id: req.params.id, role: "EMPLOYEE" }).select("+encryptedPassword");
+  if (!employee) throw new ApiError(404, "Employee not found");
+  res.json({ password: decrypt(employee.encryptedPassword) });
 });
 
 export const updateEmployee = asyncHandler(async (req: Request, res: Response) => {

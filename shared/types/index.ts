@@ -12,7 +12,7 @@ export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "UPI" | "OTHER";
 export interface UserDTO {
   id: string;
   name: string;
-  email: string;
+  username: string;
   phone: string;
   role: Role;
   status: UserStatus;
@@ -105,7 +105,7 @@ export interface ApiErrorResponse {
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -119,8 +119,16 @@ export interface CreateClientRequest {
 export interface CreateEmployeeRequest {
   name: string;
   phone: string;
-  email: string;
+  username: string;
   password: string;
+}
+
+export interface UpdateEmployeeRequest {
+  name?: string;
+  phone?: string;
+  username?: string;
+  password?: string;
+  status?: UserStatus;
 }
 
 export interface CreateCollectionRequest {
@@ -138,6 +146,20 @@ export interface CreatePaymentRequest {
   paymentMethod: PaymentMethod;
   paymentDate: string;
   remarks?: string;
+}
+
+export interface UpdatePaymentRequest {
+  amount: number;
+  paymentMethod?: PaymentMethod;
+  remarks?: string;
+}
+
+export interface PasswordViewDTO {
+  password: string;
+}
+
+export interface ChangePasswordRequest {
+  newPassword: string;
 }
 
 export interface CollectionFilters {

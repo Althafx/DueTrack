@@ -5,12 +5,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCurrentUser, useLogin } from "@/hooks/useAuth";
 import { getErrorMessage } from "@/services/api";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const { data: user, isLoading: checkingSession } = useCurrentUser();
   const loginMutation = useLogin();
@@ -23,7 +24,7 @@ export default function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const loggedInUser = await loginMutation.mutateAsync({ email, password });
+      const loggedInUser = await loginMutation.mutateAsync({ username, password });
       navigate(loggedInUser.role === "DEALER" ? "/dashboard" : "/employee/dashboard");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -45,22 +46,21 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
+                id="username"
+                type="text"
                 required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="yourusername"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 value={password}
@@ -75,8 +75,8 @@ export default function Login() {
 
           <div className="mt-6 rounded-md bg-muted p-3 text-xs text-muted-foreground">
             <p className="mb-1 font-medium text-foreground">Demo credentials (development only)</p>
-            <p>Dealer: dealer@example.com / password123</p>
-            <p>Employee: employee@example.com / password123</p>
+            <p>Dealer: dealer / password123</p>
+            <p>Employee: rahul / password123</p>
           </div>
         </CardContent>
       </Card>

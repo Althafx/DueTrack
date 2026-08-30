@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Filter, Plus, Search, Trash2, Wallet, X } from "lucide-react";
+import { Plus, Search, Trash2, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { CollectionProgress } from "@/components/shared/CollectionProgress";
 import { MobileCard, MobileCardHeader, MobileCardList, MobileCardRow } from "@/components/shared/MobileCard";
 import { DateRangePicker, type DateRangeValue } from "@/components/shared/DateRangePicker";
 import { useConfirm } from "@/components/shared/ConfirmDialogProvider";
@@ -22,7 +21,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useCollections, useCreateCollection, useDeleteCollection } from "@/hooks/useCollections";
 import { useDashboard } from "@/hooks/useDashboard";
 import { getErrorMessage } from "@/services/api";
-import { formatDate, toDateInputValue } from "@/lib/formatters";
+import { formatCurrency, formatDate, toDateInputValue } from "@/lib/formatters";
 import type { CollectionFilters, CollectionStatus, CreateCollectionRequest } from "@shared/types";
 
 const STATUS_FILTERS: Array<{ label: string; value: CollectionStatus | "ALL" }> = [
@@ -30,6 +29,12 @@ const STATUS_FILTERS: Array<{ label: string; value: CollectionStatus | "ALL" }> 
   { label: "Pending", value: "PENDING" },
   { label: "Partially Collected", value: "PARTIALLY_COLLECTED" },
   { label: "Completed", value: "COMPLETED" },
+];
+
+const AMOUNT_FIELDS: Array<{ label: string; value: "receivedAmount" | "remainingAmount" | "totalAmount" }> = [
+  { label: "Collected", value: "receivedAmount" },
+  { label: "Balance", value: "remainingAmount" },
+  { label: "Total", value: "totalAmount" },
 ];
 
 const EMPTY_FORM = {
@@ -47,7 +52,8 @@ export default function Collections() {
   const [clientFilter, setClientFilter] = useState<string>("ALL");
   const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const [search, setSearch] = useState("");
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [amountField, setAmountField] = useState<"receivedAmount" | "remainingAmount" | "totalAmount">("totalAmount");
+  const [amountQuery, setAmountQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -73,25 +79,37 @@ export default function Collections() {
     (statusFilter !== "ALL" ? 1 : 0) +
     (employeeFilter !== "ALL" ? 1 : 0) +
     (clientFilter !== "ALL" ? 1 : 0) +
-    (dateRange.from ? 1 : 0);
+    (dateRange.from ? 1 : 0) +
+    (amountQuery.trim() ? 1 : 0);
 
   const visibleCollections = useMemo(() => {
     if (!collections) return collections;
+    let result = collections;
+
     const query = search.trim().toLowerCase();
-    if (!query) return collections;
-    return collections.filter(
-      (c) =>
-        c.client.name.toLowerCase().includes(query) ||
-        c.assignedEmployee.name.toLowerCase().includes(query) ||
-        c.client.phone.toLowerCase().includes(query)
-    );
-  }, [collections, search]);
+    if (query) {
+      result = result.filter(
+        (c) =>
+          c.client.name.toLowerCase().includes(query) ||
+          c.assignedEmployee.name.toLowerCase().includes(query) ||
+          c.client.phone.toLowerCase().includes(query)
+      );
+    }
+
+    const amountValue = amountQuery.trim() ? Number(amountQuery) : null;
+    if (amountValue !== null && !Number.isNaN(amountValue)) {
+      result = result.filter((c) => c[amountField] === amountValue);
+    }
+
+    return result;
+  }, [collections, search, amountQuery, amountField]);
 
   function clearFilters() {
     setStatusFilter("ALL");
     setEmployeeFilter("ALL");
     setClientFilter("ALL");
     setDateRange({});
+    setAmountQuery("");
   }
 
   function handleCollectionDateChange(value: string) {
@@ -140,11 +158,61 @@ export default function Collections() {
   return (
     <div className="animate-page space-y-6">
       <div className="sticky top-0 z-10 -mx-4 space-y-3 bg-background px-4 pb-3 pt-4 md:-mx-8 md:px-8 md:pt-8 lg:-mx-10 lg:px-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Collections</h1>
-          <p className="text-sm text-muted-foreground">Assign and track payment collections</p>
-        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <h1 className="text-2xl font-semibold">Collections</h1>
+              <p className="text-sm text-muted-foreground">Assign and track payment collections</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative w-full min-w-[160px] flex-1 sm:max-w-[220px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Client, employee, phone..."
+                  className="h-9 pl-9"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <Select value={amountField} onValueChange={(v) => setAmountField(v as typeof amountField)}>
+                <SelectTrigger className="h-9 w-24 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AMOUNT_FIELDS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                placeholder="e.g. 5000"
+                className="h-9 w-24 shrink-0"
+                value={amountQuery}
+                onChange={(e) => setAmountQuery(e.target.value)}
+              />
+              {amountQuery.trim() && (
+                <span className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border border-border bg-muted px-3 text-sm font-semibold text-foreground">
+                  Results: {visibleCollections?.length ?? 0}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col items-stretch gap-3 sm:items-end">
+            {dashboard && (
+              <div className="flex items-center gap-4 text-base">
+                <span className="flex items-center gap-2 font-semibold">
+                  <span className="h-2.5 w-2.5 rounded-full bg-warning" /> Pending {dashboard.pendingCount}
+                </span>
+                <span className="flex items-center gap-2 font-semibold">
+                  <span className="h-2.5 w-2.5 rounded-full bg-success" /> Completed {dashboard.completedCount}
+                </span>
+              </div>
+            )}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -235,109 +303,59 @@ export default function Collections() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {dashboard && (
-          <div className="flex items-center gap-3 text-sm">
-            <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2 w-2 rounded-full bg-warning" /> Pending {dashboard.pendingCount}
-            </span>
-            <span className="flex items-center gap-1.5 font-medium">
-              <span className="h-2 w-2 rounded-full bg-success" /> Completed {dashboard.completedCount}
-            </span>
           </div>
-        )}
-
-        <div className="relative min-w-[200px] flex-1 sm:flex-none">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search client, employee, phone..."
-            className="h-9 pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="relative gap-2"
-          onClick={() => setFilterPanelOpen((open) => !open)}
-        >
-          <Filter className="h-4 w-4" /> Filter
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as CollectionStatus | "ALL")}>
+            <SelectTrigger className="h-8 flex-1 text-xs sm:min-w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_FILTERS.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+            <SelectTrigger className="h-8 flex-1 text-xs sm:min-w-[140px]">
+              <SelectValue placeholder="Employee" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Employees</SelectItem>
+              {employees?.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={clientFilter} onValueChange={setClientFilter}>
+            <SelectTrigger className="h-8 flex-1 text-xs sm:min-w-[140px]">
+              <SelectValue placeholder="Client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Clients</SelectItem>
+              {clients?.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DateRangePicker value={dateRange} onChange={setDateRange} className="h-8 flex-1 text-xs sm:min-w-[160px]" />
+
           {activeFilterCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-              {activeFilterCount}
-            </span>
+            <Button variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 text-xs text-muted-foreground" onClick={clearFilters}>
+              <X className="h-3 w-3" /> Clear filters
+            </Button>
           )}
-        </Button>
-
-        {filterPanelOpen && activeFilterCount > 0 && (
-          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={clearFilters}>
-            <X className="h-3.5 w-3.5" /> Clear
-          </Button>
-        )}
-      </div>
-
-      {filterPanelOpen && (
-        <div className="flex max-h-[40vh] flex-wrap items-end gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3 animate-slide-up">
-          <div className="w-36 space-y-1">
-            <Label className="text-xs">Status</Label>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as CollectionStatus | "ALL")}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_FILTERS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="w-40 space-y-1">
-            <Label className="text-xs">Employee</Label>
-            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Employee" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Employees</SelectItem>
-                {employees?.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="w-40 space-y-1">
-            <Label className="text-xs">Client</Label>
-            <Select value={clientFilter} onValueChange={setClientFilter}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Client" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Clients</SelectItem>
-                {clients?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Date Range</Label>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-          </div>
         </div>
-      )}
       </div>
 
       <Card>
@@ -354,7 +372,9 @@ export default function Collections() {
                     <TableRow>
                       <TableHead>Client</TableHead>
                       <TableHead>Employee</TableHead>
-                      <TableHead>Progress</TableHead>
+                      <TableHead>Collected</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -369,11 +389,11 @@ export default function Collections() {
                           </Link>
                         </TableCell>
                         <TableCell>{c.assignedEmployee.name}</TableCell>
-                        <TableCell className="min-w-[200px]">
-                          <CollectionProgress received={c.receivedAmount} total={c.totalAmount} />
-                        </TableCell>
+                        <TableCell className="text-success">{formatCurrency(c.receivedAmount)}</TableCell>
+                        <TableCell className="text-warning">{formatCurrency(c.remainingAmount)}</TableCell>
+                        <TableCell className="font-medium">{formatCurrency(c.totalAmount)}</TableCell>
                         <TableCell>
-                          <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                          <StatusBadge status={c.status} />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(c.dueDate)}</TableCell>
                         <TableCell className="text-right">
@@ -396,7 +416,7 @@ export default function Collections() {
                         <p className="truncate text-xs text-muted-foreground">{c.assignedEmployee.name}</p>
                       </Link>
                       <div className="flex shrink-0 items-center gap-1">
-                        <StatusBadge status={c.status} receivedAmount={c.receivedAmount} totalAmount={c.totalAmount} />
+                        <StatusBadge status={c.status} />
                         <Button
                           variant="ghost"
                           size="icon"
@@ -408,8 +428,12 @@ export default function Collections() {
                       </div>
                     </MobileCardHeader>
                     <Link to={`/collections/${c.id}`}>
-                      <CollectionProgress received={c.receivedAmount} total={c.totalAmount} className="mb-3" />
-                      <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />
+                      <div className="divide-y divide-border">
+                        <MobileCardRow label="Collected" value={<span className="text-success">{formatCurrency(c.receivedAmount)}</span>} />
+                        <MobileCardRow label="Balance" value={<span className="text-warning">{formatCurrency(c.remainingAmount)}</span>} />
+                        <MobileCardRow label="Total" value={formatCurrency(c.totalAmount)} />
+                        <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />
+                      </div>
                     </Link>
                   </MobileCard>
                 ))}
