@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { CalendarRange, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,15 +22,7 @@ export function DateRangePicker({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [isSmallScreen, setIsSmallScreen] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 640px)");
-    const update = () => setIsSmallScreen(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
+  const [month, setMonth] = useState<Date>(() => (value.from ? new Date(value.from) : new Date()));
 
   const selected: DateRange | undefined = value.from
     ? { from: new Date(value.from), to: value.to ? new Date(value.to) : undefined }
@@ -55,7 +47,17 @@ export function DateRangePicker({
     : "Pick a date range";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          // Jump to the selected range's month (or today) every time the
+          // popover opens, so it never gets stuck showing a stale month.
+          setMonth(value.from ? new Date(value.from) : new Date());
+        }
+        setOpen(next);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="outline" className={cn("gap-2 font-normal", !value.from && "text-muted-foreground", className)}>
           <CalendarRange className="h-4 w-4" />
@@ -67,8 +69,9 @@ export function DateRangePicker({
           mode="range"
           selected={selected}
           onSelect={handleSelect}
-          numberOfMonths={isSmallScreen ? 1 : 2}
-          defaultMonth={selected?.from}
+          month={month}
+          onMonthChange={setMonth}
+          numberOfMonths={1}
         />
         {value.from && (
           <div className="flex justify-end border-t border-border p-2">

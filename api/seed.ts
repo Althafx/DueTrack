@@ -9,6 +9,25 @@ import { Collection } from "./models/Collection";
 import { Payment } from "./models/Payment";
 import { computeStatus } from "./utils/status";
 
+type PaymentMethod = "CASH" | "BANK_TRANSFER" | "UPI" | "OTHER";
+const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BANK_TRANSFER", "UPI", "OTHER"];
+
+// Deterministic pseudo-random generator so the demo dataset is reproducible
+// across re-seeds instead of shuffling every time `npm run seed` is run.
+function mulberry32(seed: number) {
+  let a = seed;
+  return function random() {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const random = mulberry32(20260901);
+const pick = <T,>(arr: T[]): T => arr[Math.floor(random() * arr.length)];
+const randInt = (min: number, max: number) => Math.floor(random() * (max - min + 1)) + min;
+
 async function seed() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error("MONGODB_URI is not set");
@@ -34,23 +53,17 @@ async function seed() {
     status: "ACTIVE",
   });
 
-  const employee1 = await User.create({
-    name: "Rahul Sharma",
-    username: "rahul",
-    password: "password123",
-    phone: "9876500001",
-    role: "EMPLOYEE",
-    status: "ACTIVE",
-  });
-
-  const employee2 = await User.create({
-    name: "Priya Verma",
-    username: "priya",
-    password: "password123",
-    phone: "9876500002",
-    role: "EMPLOYEE",
-    status: "ACTIVE",
-  });
+  const employeesData = [
+    { name: "Rahul Sharma", username: "rahul", phone: "9876500001" },
+    { name: "Priya Verma", username: "priya", phone: "9876500002" },
+    { name: "Arjun Mehta", username: "arjun", phone: "9876500003" },
+    { name: "Sneha Iyer", username: "sneha", phone: "9876500004" },
+  ];
+  const employees = await Promise.all(
+    employeesData.map((e) =>
+      User.create({ ...e, password: "password123", role: "EMPLOYEE", status: "ACTIVE" })
+    )
+  );
 
   console.log("Creating clients...");
   const clientsData = [
@@ -59,91 +72,111 @@ async function seed() {
     { name: "Kumar & Sons", phone: "9111100003", address: "Anna Nagar, Chennai" },
     { name: "Sunrise Distributors", phone: "9111100004", address: "Salt Lake, Kolkata" },
     { name: "Green Valley Store", phone: "9111100005", address: "Banjara Hills, Hyderabad" },
+    { name: "Metro Wholesale", phone: "9111100006", address: "Andheri East, Mumbai" },
+    { name: "Coastal Traders", phone: "9111100007", address: "Marine Drive, Kochi" },
+    { name: "Highland Retailers", phone: "9111100008", address: "Sector 5, Shimla" },
+    { name: "Delta Distributors", phone: "9111100009", address: "Civil Lines, Jaipur" },
+    { name: "Riverside Mart", phone: "9111100010", address: "Riverside Road, Ahmedabad" },
+    { name: "Prime Traders", phone: "9111100011", address: "Park Street, Kolkata" },
+    { name: "Nova Enterprises", phone: "9111100012", address: "HSR Layout, Bengaluru" },
   ];
-  const clients = await Client.insertMany(
-    clientsData.map((c) => ({ ...c, createdBy: dealer.id }))
-  );
+  const clients = await Client.insertMany(clientsData.map((c) => ({ ...c, createdBy: dealer.id })));
 
-  console.log("Creating collections and payment history...");
+  console.log("Creating collections and payment history (Feb 2026 - Sep 2026)...");
 
-  const today = new Date();
-  const daysAgo = (n: number) => new Date(today.getTime() - n * 24 * 60 * 60 * 1000);
+  // Seed window: 1 Feb 2026 through "today" (the seed is meant to always
+  // reach up to the current date so the demo never looks stale).
+  const seedStart = new Date(2026, 1, 1); // 1 Feb 2026
+  const seedEnd = new Date(); // today
+  const totalSeedDays = Math.max(1, Math.floor((seedEnd.getTime() - seedStart.getTime()) / (24 * 60 * 60 * 1000)));
 
-  type SeedPlan = {
-    client: (typeof clients)[number];
-    employee: typeof employee1;
-    totalAmount: number;
-    payments: Array<{ amount: number; method: "CASH" | "BANK_TRANSFER" | "UPI" | "OTHER"; daysAgo: number; remarks: string }>;
-  };
+  function randomDateInWindow(): Date {
+    const offset = randInt(0, totalSeedDays);
+    return new Date(seedStart.getTime() + offset * 24 * 60 * 60 * 1000);
+  }
 
-  const plans: SeedPlan[] = [
-    {
-      client: clients[0],
-      employee: employee1,
-      totalAmount: 100000,
-      payments: [
-        { amount: 10000, method: "CASH", daysAgo: 3, remarks: "Partial payment" },
-        { amount: 20000, method: "UPI", daysAgo: 1, remarks: "Second payment" },
-      ],
-    },
-    {
-      client: clients[1],
-      employee: employee1,
-      totalAmount: 50000,
-      payments: [{ amount: 50000, method: "BANK_TRANSFER", daysAgo: 5, remarks: "Full settlement" }],
-    },
-    {
-      client: clients[2],
-      employee: employee2,
-      totalAmount: 40000,
-      payments: [{ amount: 40000, method: "CASH", daysAgo: 90, remarks: "Old settlement, outside the last month" }],
-    },
-    {
-      client: clients[2],
-      employee: employee2,
-      totalAmount: 75000,
-      payments: [],
-    },
-    {
-      client: clients[3],
-      employee: employee2,
-      totalAmount: 30000,
-      payments: [{ amount: 15000, method: "CASH", daysAgo: 0, remarks: "Collected today" }],
-    },
-    {
-      client: clients[4],
-      employee: employee1,
-      totalAmount: 20000,
-      payments: [{ amount: 20000, method: "UPI", daysAgo: 0, remarks: "Paid in full today" }],
-    },
+  function addDays(date: Date, days: number): Date {
+    return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
+  const REMARKS_POOL = [
+    "Partial payment",
+    "Second installment",
+    "Full settlement",
+    "Cash collected on-site",
+    "Cleared outstanding balance",
+    "Advance payment",
+    "Monthly installment",
   ];
 
-  for (const plan of plans) {
-    const receivedAmount = plan.payments.reduce((sum, p) => sum + p.amount, 0);
+  const NUM_COLLECTIONS = 60;
+
+  for (let i = 0; i < NUM_COLLECTIONS; i++) {
+    const client = pick(clients);
+    const employee = pick(employees);
+    const totalAmount = randInt(4, 40) * 5000; // 20,000 - 200,000
+    const collectionDate = randomDateInWindow();
+    const dueDate = addDays(collectionDate, randInt(14, 45));
+
+    // Bias outcomes: ~35% pending (no payments), ~35% partially collected,
+    // ~30% fully completed — gives every status a healthy sample size.
+    const outcomeRoll = random();
+    let targetReceived: number;
+    if (outcomeRoll < 0.35) {
+      targetReceived = 0;
+    } else if (outcomeRoll < 0.7) {
+      targetReceived = Math.round((totalAmount * randInt(20, 80)) / 100 / 500) * 500;
+    } else {
+      targetReceived = totalAmount;
+    }
+
+    const numPayments = targetReceived === 0 ? 0 : randInt(1, 3);
+    const paymentPlan: Array<{ amount: number; method: PaymentMethod; date: Date; remarks: string }> = [];
+    let remainingToAllocate = targetReceived;
+
+    for (let p = 0; p < numPayments; p++) {
+      const isLast = p === numPayments - 1;
+      const amount = isLast
+        ? remainingToAllocate
+        : Math.min(remainingToAllocate, Math.round((remainingToAllocate * randInt(30, 70)) / 100 / 500) * 500 || remainingToAllocate);
+      if (amount <= 0) continue;
+      remainingToAllocate -= amount;
+
+      // Spread payment dates between the collection date and today (or due
+      // date, whichever is earlier), never in the future.
+      const latestPossible = new Date(Math.min(dueDate.getTime(), seedEnd.getTime()));
+      const spanDays = Math.max(1, Math.floor((latestPossible.getTime() - collectionDate.getTime()) / (24 * 60 * 60 * 1000)));
+      const paymentDate = addDays(collectionDate, randInt(1, spanDays));
+
+      paymentPlan.push({ amount, method: pick(PAYMENT_METHODS), date: paymentDate, remarks: pick(REMARKS_POOL) });
+    }
+
+    const receivedAmount = paymentPlan.reduce((sum, p) => sum + p.amount, 0);
+
     const collection = await Collection.create({
-      client: plan.client.id,
-      assignedEmployee: plan.employee.id,
-      totalAmount: plan.totalAmount,
+      client: client.id,
+      assignedEmployee: employee.id,
+      totalAmount,
       receivedAmount,
-      remainingAmount: plan.totalAmount - receivedAmount,
-      status: computeStatus(plan.totalAmount, receivedAmount),
-      collectionDate: daysAgo(7),
-      dueDate: daysAgo(-14),
+      remainingAmount: totalAmount - receivedAmount,
+      status: computeStatus(totalAmount, receivedAmount),
+      collectionDate,
+      dueDate,
       notes: "",
     });
 
-    for (const payment of plan.payments) {
+    for (const payment of paymentPlan) {
       await Payment.create({
         collection: collection.id,
-        client: plan.client.id,
-        employee: plan.employee.id,
-        clientName: plan.client.name,
-        clientPhone: plan.client.phone,
-        employeeName: plan.employee.name,
+        client: client.id,
+        employee: employee.id,
+        clientName: client.name,
+        clientPhone: client.phone,
+        employeeName: employee.name,
         amount: payment.amount,
         paymentMethod: payment.method,
         remarks: payment.remarks,
-        paymentDate: daysAgo(payment.daysAgo),
+        paymentDate: payment.date,
       });
     }
   }
@@ -151,8 +184,10 @@ async function seed() {
   console.log("\nSeed complete.\n");
   console.log("Demo credentials (development only):");
   console.log("  Dealer:   dealer / password123");
-  console.log("  Employee: rahul / password123");
-  console.log("  Employee: priya / password123\n");
+  for (const e of employeesData) {
+    console.log(`  Employee: ${e.username} / password123`);
+  }
+  console.log("");
 
   await mongoose.disconnect();
 }

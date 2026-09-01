@@ -19,7 +19,6 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { useClients } from "@/hooks/useClients";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useCollections, useCreateCollection, useDeleteCollection } from "@/hooks/useCollections";
-import { useDashboard } from "@/hooks/useDashboard";
 import { getErrorMessage } from "@/services/api";
 import { formatCurrency, formatDate, toDateInputValue } from "@/lib/formatters";
 import type { CollectionFilters, CollectionStatus, CreateCollectionRequest } from "@shared/types";
@@ -66,7 +65,6 @@ export default function Collections() {
   };
 
   const { data: collections, isLoading } = useCollections(filters);
-  const { data: dashboard } = useDashboard("all");
   const { data: clients } = useClients();
   const { data: employees } = useEmployees();
   const createMutation = useCreateCollection();
@@ -103,6 +101,20 @@ export default function Collections() {
 
     return result;
   }, [collections, search, amountQuery, amountField]);
+
+  const summary = useMemo(() => {
+    if (!collections) return null;
+    return collections.reduce(
+      (acc, c) => {
+        acc.received += c.receivedAmount;
+        acc.remaining += c.remainingAmount;
+        if (c.status === "PENDING") acc.pendingCount += 1;
+        else if (c.status === "COMPLETED") acc.completedCount += 1;
+        return acc;
+      },
+      { received: 0, remaining: 0, pendingCount: 0, completedCount: 0 }
+    );
+  }, [collections]);
 
   function clearFilters() {
     setStatusFilter("ALL");
@@ -203,14 +215,16 @@ export default function Collections() {
             </div>
           </div>
           <div className="flex flex-col items-stretch gap-3 sm:items-end">
-            {dashboard && (
-              <div className="flex items-center gap-4 text-base">
+            {summary && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:text-base sm:justify-end">
                 <span className="flex items-center gap-2 font-semibold">
-                  <span className="h-2.5 w-2.5 rounded-full bg-warning" /> Pending {dashboard.pendingCount}
+                  <span className="h-2.5 w-2.5 rounded-full bg-warning" /> Pending {summary.pendingCount}
                 </span>
                 <span className="flex items-center gap-2 font-semibold">
-                  <span className="h-2.5 w-2.5 rounded-full bg-success" /> Completed {dashboard.completedCount}
+                  <span className="h-2.5 w-2.5 rounded-full bg-success" /> Completed {summary.completedCount}
                 </span>
+                <span className="font-semibold text-success">Collected {formatCurrency(summary.received)}</span>
+                <span className="font-semibold text-warning">Balance {formatCurrency(summary.remaining)}</span>
               </div>
             )}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
