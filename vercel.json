@@ -2,22 +2,14 @@
   "version": 2,
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "builds": [
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    },
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["shared/**/*"]
-      }
+  "outputDirectory": "client/dist",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "shared/**/*"
     }
-  ],
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.ts" },
-    { "source": "/(.*)", "destination": "/client/dist/$1" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
