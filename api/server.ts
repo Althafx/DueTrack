@@ -49,7 +49,16 @@ function jsonBodyParser(req: Request, res: Response, next: NextFunction) {
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || true,
+    // Read per-request rather than once at module scope: under Cloudflare
+    // Workers, secrets/vars aren't reliably present on `process.env` during
+    // module evaluation (see jwt.ts/crypto.ts for the same pattern), only
+    // once the runtime is actually serving a request.
+    //
+    // CLIENT_ORIGIN is the deployed frontend Worker's origin (no path) —
+    // set via wrangler.jsonc's `vars` in production and api/.dev.vars
+    // locally. Falling back to `true` (reflect the request origin) when
+    // unset keeps local dev/tooling working without requiring the var.
+    origin: (_origin, callback) => callback(null, process.env.CLIENT_ORIGIN || true),
     credentials: true,
   })
 );

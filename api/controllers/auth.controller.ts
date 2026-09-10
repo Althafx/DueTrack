@@ -19,10 +19,16 @@ export const changeMyPasswordSchema = z.object({
 
 function setCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
+  // In production the frontend and API are separate Workers on different
+  // origins, so the auth cookie must be sent cross-site — that requires
+  // SameSite=None, which browsers only honor when Secure is also set.
+  // Locally, Vite's dev proxy makes requests same-origin from the browser's
+  // perspective, so the stricter/simpler Lax + non-Secure pairing still
+  // works and matches plain-HTTP local dev.
   return {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax" as const,
+    sameSite: (isProd ? "none" : "lax") as "none" | "lax",
     maxAge: COOKIE_MAX_AGE_MS,
     path: "/",
   };
@@ -51,7 +57,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const logout = asyncHandler(async (_req: Request, res: Response) => {
-  res.clearCookie(AUTH_COOKIE_NAME, { path: "/" });
+  // Mirror the same attributes used when setting the cookie (path, sameSite,
+  // secure) — some browsers match on these when clearing, not just the name.
+  res.clearCookie(AUTH_COOKIE_NAME, setCookieOptions());
   res.json({ message: "Logged out" });
 });
 

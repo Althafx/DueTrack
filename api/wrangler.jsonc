@@ -14,6 +14,18 @@
     "iconv-lite": "./stubs/iconv-lite.js"
   },
 
+  // Non-secret config. Declaring these here (rather than only in the
+  // Cloudflare dashboard) means `wrangler deploy` won't wipe them on future
+  // deploys — plain dashboard vars not listed in this file get deleted on
+  // deploy unless `keep_vars: true` is set. JWT_SECRET and
+  // PASSWORD_ENCRYPTION_KEY are real secrets and are NOT declared here —
+  // they're set via `wrangler secret put`, which deploy never touches.
+  "vars": {
+    "CLIENT_ORIGIN": "https://duetrack.engine-core.workers.dev",
+    "NODE_ENV": "production",
+    "JWT_EXPIRES_IN": "7d"
+  },
+
   "d1_databases": [
     {
       "binding": "DB",
