@@ -1,13 +1,11 @@
-// Development/demo data seeder — run manually via `npm run seed`.
-// Never invoked automatically on server boot. Safe to re-run: it clears
-// only the demo dataset before recreating it.
+// Development/demo data seeder for D1 — run manually via `npm run seed`.
+// Generates a .sql file (printed to stdout) that wipes and recreates the
+// demo dataset; apply it with `wrangler d1 execute ... --file=...`.
+// Never invoked automatically — safe to re-run, it's a full wipe+recreate.
 import "./utils/loadEnv";
-import mongoose from "mongoose";
-import { User } from "./models/User";
-import { Client } from "./models/Client";
-import { Collection } from "./models/Collection";
-import { Payment } from "./models/Payment";
 import { computeStatus } from "./utils/status";
+import { hashAndEncryptPassword } from "./utils/password";
+import { newId } from "./db/ids";
 
 type PaymentMethod = "CASH" | "BANK_TRANSFER" | "UPI" | "OTHER";
 const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BANK_TRANSFER", "UPI", "OTHER"];
@@ -28,30 +26,26 @@ const random = mulberry32(20260901);
 const pick = <T,>(arr: T[]): T => arr[Math.floor(random() * arr.length)];
 const randInt = (min: number, max: number) => Math.floor(random() * (max - min + 1)) + min;
 
+function sqlQuote(value: string | number | null): string {
+  if (value === null) return "NULL";
+  if (typeof value === "number") return String(value);
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 async function seed() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error("MONGODB_URI is not set");
+  const statements: string[] = [];
+  statements.push("DELETE FROM payments;");
+  statements.push("DELETE FROM collections;");
+  statements.push("DELETE FROM clients;");
+  statements.push("DELETE FROM users;");
 
-  console.log("Connecting to MongoDB...");
-  await mongoose.connect(uri);
-
-  console.log("Clearing existing demo data...");
-  await Promise.all([
-    User.deleteMany({}),
-    Client.deleteMany({}),
-    Collection.deleteMany({}),
-    Payment.deleteMany({}),
-  ]);
-
-  console.log("Creating users...");
-  const dealer = await User.create({
-    name: "Demo Dealer",
-    username: "dealer",
-    password: "password123",
-    phone: "9876543210",
-    role: "DEALER",
-    status: "ACTIVE",
-  });
+  console.error("Creating users...");
+  const dealerId = newId();
+  const dealerAuth = await hashAndEncryptPassword("password123");
+  const dealerCreatedAt = new Date().toISOString();
+  statements.push(
+    `INSERT INTO users (id, name, username, phone, password, encrypted_password, role, status, created_at) VALUES (${sqlQuote(dealerId)}, ${sqlQuote("Demo Dealer")}, ${sqlQuote("dealer")}, ${sqlQuote("9876543210")}, ${sqlQuote(dealerAuth.password)}, ${sqlQuote(dealerAuth.encryptedPassword)}, 'DEALER', 'ACTIVE', ${sqlQuote(dealerCreatedAt)});`
+  );
 
   const employeesData = [
     { name: "Rahul Sharma", username: "rahul", phone: "9876500001" },
@@ -59,13 +53,18 @@ async function seed() {
     { name: "Arjun Mehta", username: "arjun", phone: "9876500003" },
     { name: "Sneha Iyer", username: "sneha", phone: "9876500004" },
   ];
-  const employees = await Promise.all(
-    employeesData.map((e) =>
-      User.create({ ...e, password: "password123", role: "EMPLOYEE", status: "ACTIVE" })
-    )
-  );
+  const employees: Array<{ id: string; name: string; username: string }> = [];
+  for (const e of employeesData) {
+    const id = newId();
+    const auth = await hashAndEncryptPassword("password123");
+    const createdAt = new Date().toISOString();
+    statements.push(
+      `INSERT INTO users (id, name, username, phone, password, encrypted_password, role, status, created_at) VALUES (${sqlQuote(id)}, ${sqlQuote(e.name)}, ${sqlQuote(e.username)}, ${sqlQuote(e.phone)}, ${sqlQuote(auth.password)}, ${sqlQuote(auth.encryptedPassword)}, 'EMPLOYEE', 'ACTIVE', ${sqlQuote(createdAt)});`
+    );
+    employees.push({ id, name: e.name, username: e.username });
+  }
 
-  console.log("Creating clients...");
+  console.error("Creating clients...");
   const clientsData = [
     { name: "Amit Traders", phone: "9111100001", address: "MG Road, Pune", notes: "Wholesale buyer" },
     { name: "Singh Enterprises", phone: "9111100002", address: "Sector 18, Noida" },
@@ -80,9 +79,17 @@ async function seed() {
     { name: "Prime Traders", phone: "9111100011", address: "Park Street, Kolkata" },
     { name: "Nova Enterprises", phone: "9111100012", address: "HSR Layout, Bengaluru" },
   ];
-  const clients = await Client.insertMany(clientsData.map((c) => ({ ...c, createdBy: dealer.id })));
+  const clients: Array<{ id: string; name: string; phone: string }> = [];
+  for (const c of clientsData) {
+    const id = newId();
+    const createdAt = new Date().toISOString();
+    statements.push(
+      `INSERT INTO clients (id, name, phone, address, notes, created_by, created_at) VALUES (${sqlQuote(id)}, ${sqlQuote(c.name)}, ${sqlQuote(c.phone)}, ${sqlQuote(c.address)}, ${sqlQuote(c.notes ?? null)}, ${sqlQuote(dealerId)}, ${sqlQuote(createdAt)});`
+    );
+    clients.push({ id, name: c.name, phone: c.phone });
+  }
 
-  console.log("Creating collections and payment history (Feb 2026 - Sep 2026)...");
+  console.error("Creating collections and payment history (Feb 2026 - Sep 2026)...");
 
   // Seed window: 1 Feb 2026 through "today" (the seed is meant to always
   // reach up to the current date so the demo never looks stale).
@@ -152,47 +159,35 @@ async function seed() {
     }
 
     const receivedAmount = paymentPlan.reduce((sum, p) => sum + p.amount, 0);
+    const collectionId = newId();
+    const collectionCreatedAt = new Date().toISOString();
+    const status = computeStatus(totalAmount, receivedAmount);
 
-    const collection = await Collection.create({
-      client: client.id,
-      assignedEmployee: employee.id,
-      totalAmount,
-      receivedAmount,
-      remainingAmount: totalAmount - receivedAmount,
-      status: computeStatus(totalAmount, receivedAmount),
-      collectionDate,
-      dueDate,
-      notes: "",
-    });
+    statements.push(
+      `INSERT INTO collections (id, client_id, assigned_employee_id, total_amount, received_amount, remaining_amount, status, collection_date, due_date, notes, created_at, updated_at) VALUES (${sqlQuote(collectionId)}, ${sqlQuote(client.id)}, ${sqlQuote(employee.id)}, ${totalAmount}, ${receivedAmount}, ${totalAmount - receivedAmount}, ${sqlQuote(status)}, ${sqlQuote(collectionDate.toISOString())}, ${sqlQuote(dueDate.toISOString())}, ${sqlQuote("")}, ${sqlQuote(collectionCreatedAt)}, ${sqlQuote(collectionCreatedAt)});`
+    );
 
     for (const payment of paymentPlan) {
-      await Payment.create({
-        collection: collection.id,
-        client: client.id,
-        employee: employee.id,
-        clientName: client.name,
-        clientPhone: client.phone,
-        employeeName: employee.name,
-        amount: payment.amount,
-        paymentMethod: payment.method,
-        remarks: payment.remarks,
-        paymentDate: payment.date,
-      });
+      const paymentId = newId();
+      const paymentCreatedAt = new Date().toISOString();
+      statements.push(
+        `INSERT INTO payments (id, collection_id, client_id, employee_id, client_name, client_phone, employee_name, amount, payment_method, remarks, payment_date, created_at) VALUES (${sqlQuote(paymentId)}, ${sqlQuote(collectionId)}, ${sqlQuote(client.id)}, ${sqlQuote(employee.id)}, ${sqlQuote(client.name)}, ${sqlQuote(client.phone)}, ${sqlQuote(employee.name)}, ${payment.amount}, ${sqlQuote(payment.method)}, ${sqlQuote(payment.remarks)}, ${sqlQuote(payment.date.toISOString())}, ${sqlQuote(paymentCreatedAt)});`
+      );
     }
   }
 
-  console.log("\nSeed complete.\n");
-  console.log("Demo credentials (development only):");
-  console.log("  Dealer:   dealer / password123");
-  for (const e of employeesData) {
-    console.log(`  Employee: ${e.username} / password123`);
-  }
-  console.log("");
+  console.log(statements.join("\n"));
 
-  await mongoose.disconnect();
+  console.error("\nSeed SQL generated.\n");
+  console.error("Demo credentials (development only):");
+  console.error("  Dealer:   dealer / password123");
+  for (const e of employeesData) {
+    console.error(`  Employee: ${e.username} / password123`);
+  }
+  console.error("");
 }
 
 seed().catch((err) => {
-  console.error("Seed failed:", err);
+  console.error("Seed generation failed:", err);
   process.exit(1);
 });

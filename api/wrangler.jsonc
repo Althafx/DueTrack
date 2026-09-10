@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "duetrack-api",
+  "compatibility_date": "2026-09-06",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "index.ts",
+
+  // `iconv-lite` is pulled in transitively via express -> body-parser ->
+  // raw-body. The real iconv-lite crashes at import time under Workers,
+  // so it is aliased to a harmless stub.
+  "alias": {
+    "iconv-lite": "./stubs/iconv-lite.js"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "duetrack-db",
+      "database_id": "722a1997-d9d9-45dc-bbb6-ba01dfb0da75"
+    }
+  ]
+}

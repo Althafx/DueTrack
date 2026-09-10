@@ -11,12 +11,8 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
     return res.status(err.statusCode).json({ message: err.message, errors: err.errors });
   }
 
-  if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+  if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
     return res.status(409).json({ message: "A record with this value already exists" });
-  }
-
-  if (err && typeof err === "object" && "name" in err && (err as { name: string }).name === "ValidationError") {
-    return res.status(400).json({ message: (err as Error).message });
   }
 
   console.error(err);

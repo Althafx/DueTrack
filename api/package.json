@@ -4,11 +4,16 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "dev": "tsx watch dev-server.ts",
+    "dev": "wrangler dev",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/api/dev-server.js",
-    "seed": "tsx seed.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "deploy": "wrangler deploy",
+    "seed": "npm run seed:generate && npm run seed:apply:local",
+    "seed:generate": "tsx seed-d1.ts > .seed-data.sql",
+    "seed:apply:local": "wrangler d1 execute duetrack-db --local --file=./.seed-data.sql",
+    "seed:apply:remote": "wrangler d1 execute duetrack-db --remote --file=./.seed-data.sql",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "migrate:local": "wrangler d1 migrations apply duetrack-db --local",
+    "migrate:remote": "wrangler d1 migrations apply duetrack-db --remote"
   },
   "dependencies": {
     "@payment-collection/shared": "*",
@@ -17,11 +22,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "express-mongo-sanitize": "^2.2.0",
-    "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.8.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -32,6 +34,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.9.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "wrangler": "^4.130.0"
   }
 }

@@ -1,6 +1,7 @@
+import { httpServerHandler } from "cloudflare:node";
 import { app } from "./server";
 
-// Vercel serverless entry point — the same Express app is used locally
-// (via dev-server.ts) and here, so there is exactly one place route
-// wiring lives.
-export default app;
+const PORT = 5000; // internal only, never user-facing
+app.listen(PORT);
+
+export default httpServerHandler({ port: PORT });
