@@ -13,18 +13,13 @@ export function formatDate(value: string | Date): string {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear()).slice(-2);
-  return `${day}-${month}-${year}`;
+  return `${day}/${month}/${year}`;
 }
 
 export function formatDateTime(value: string | Date): string {
   const date = typeof value === "string" ? new Date(value) : value;
-  return date.toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const time = date.toLocaleString("en-IN", { hour: "numeric", minute: "2-digit" });
+  return `${formatDate(date)}, ${time}`;
 }
 
 export function toDateInputValue(value: string | Date): string {

@@ -72,6 +72,7 @@ interface RawJoinRow {
   remarks: string | null;
   payment_date: string;
   created_at: string;
+  verified: number;
   cl_id: string | null;
   cl_name: string | null;
   cl_phone: string | null;
@@ -126,6 +127,7 @@ function shapeJoinRow(row: RawJoinRow): PaymentWithRefsRow {
     remarks: row.remarks,
     payment_date: row.payment_date,
     created_at: row.created_at,
+    verified: row.verified,
     client,
     employee,
   };
@@ -236,4 +238,12 @@ export async function updatePaymentAndCollection(input: UpdatePaymentAndCollecti
       .prepare(`UPDATE collections SET received_amount = ?, remaining_amount = ?, status = ?, updated_at = ? WHERE id = ?`)
       .bind(input.nextReceivedAmount, input.nextRemainingAmount, input.nextStatus, updatedAt, input.collectionId),
   ]);
+}
+
+export async function setPaymentVerified(id: string, verified: boolean): Promise<void> {
+  const db = getDB();
+  await db
+    .prepare(`UPDATE payments SET verified = ? WHERE id = ?`)
+    .bind(verified ? 1 : 0, id)
+    .run();
 }

@@ -157,7 +157,7 @@ export function DealerLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 pb-20 md:px-8 md:pb-8 lg:px-10">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 pb-20 md:px-8 md:pb-8 lg:px-10">
           <div className="mx-auto w-full max-w-6xl">
             <Outlet />
           </div>

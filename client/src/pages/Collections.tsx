@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, Wallet, X } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Trash2, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,7 @@ export default function Collections() {
   const [amountField, setAmountField] = useState<"receivedAmount" | "remainingAmount" | "totalAmount">("totalAmount");
   const [amountQuery, setAmountQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const filters: CollectionFilters = {
@@ -101,6 +102,54 @@ export default function Collections() {
 
     return result;
   }, [collections, search, amountQuery, amountField]);
+
+  // Each active filter becomes a removable chip. This is how the selected
+  // employee/client name stays readable on narrow screens — the <Select>
+  // trigger itself truncates long names, the chip row doesn't.
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
+
+    if (statusFilter !== "ALL") {
+      chips.push({
+        key: "status",
+        label: STATUS_FILTERS.find((s) => s.value === statusFilter)?.label ?? statusFilter,
+        onClear: () => setStatusFilter("ALL"),
+      });
+    }
+    if (employeeFilter !== "ALL") {
+      chips.push({
+        key: "employee",
+        label: employees?.find((e) => e.id === employeeFilter)?.name ?? "Employee",
+        onClear: () => setEmployeeFilter("ALL"),
+      });
+    }
+    if (clientFilter !== "ALL") {
+      chips.push({
+        key: "client",
+        label: clients?.find((c) => c.id === clientFilter)?.name ?? "Client",
+        onClear: () => setClientFilter("ALL"),
+      });
+    }
+    if (dateRange.from) {
+      chips.push({
+        key: "date",
+        label: dateRange.to
+          ? `${formatDate(dateRange.from)} – ${formatDate(dateRange.to)}`
+          : formatDate(dateRange.from),
+        onClear: () => setDateRange({}),
+      });
+    }
+    if (amountQuery.trim()) {
+      const field = AMOUNT_FIELDS.find((f) => f.value === amountField)?.label ?? "Amount";
+      chips.push({
+        key: "amount",
+        label: `${field} ${amountQuery.trim()}`,
+        onClear: () => setAmountQuery(""),
+      });
+    }
+
+    return chips;
+  }, [statusFilter, employeeFilter, clientFilter, dateRange, amountQuery, amountField, employees, clients]);
 
   const summary = useMemo(() => {
     if (!collections) return null;
@@ -168,71 +217,44 @@ export default function Collections() {
   }
 
   return (
-    <div className="animate-page space-y-6">
-      <div className="sticky top-0 z-10 -mx-4 space-y-3 bg-background px-4 pb-3 pt-4 md:-mx-8 md:px-8 md:pt-8 lg:-mx-10 lg:px-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-3">
-            <div>
-              <h1 className="text-2xl font-semibold">Collections</h1>
-              <p className="text-sm text-muted-foreground">Assign and track payment collections</p>
-            </div>
+    <div className="animate-page space-y-3 md:space-y-6">
+      <div className="sticky top-0 z-10 -mx-4 space-y-2 border-b border-border bg-background px-4 pb-2 pt-3 md:-mx-8 md:space-y-3 md:border-0 md:px-8 md:pb-3 md:pt-8 lg:-mx-10 lg:px-10">
+        {/* Toolbar: search + filter toggle + new, all on one line on mobile. */}
+        <div className="flex items-center gap-2">
+          <h1 className="hidden text-2xl font-semibold md:block">Collections</h1>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-full min-w-[160px] flex-1 sm:max-w-[220px]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Client, employee, phone..."
-                  className="h-9 pl-9"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-
-              <Select value={amountField} onValueChange={(v) => setAmountField(v as typeof amountField)}>
-                <SelectTrigger className="h-9 w-24 shrink-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {AMOUNT_FIELDS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                placeholder="e.g. 5000"
-                className="h-9 w-24 shrink-0"
-                value={amountQuery}
-                onChange={(e) => setAmountQuery(e.target.value)}
-              />
-              {amountQuery.trim() && (
-                <span className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border border-border bg-muted px-3 text-sm font-semibold text-foreground">
-                  Results: {visibleCollections?.length ?? 0}
-                </span>
-              )}
-            </div>
+          <div className="relative min-w-0 flex-1 md:ml-auto md:max-w-[240px] md:flex-none">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              className="h-9 pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          <div className="flex flex-col items-stretch gap-3 sm:items-end">
-            {summary && (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:text-base sm:justify-end">
-                <span className="flex items-center gap-2 font-semibold">
-                  <span className="h-2.5 w-2.5 rounded-full bg-warning" /> Pending {summary.pendingCount}
-                </span>
-                <span className="flex items-center gap-2 font-semibold">
-                  <span className="h-2.5 w-2.5 rounded-full bg-success" /> Completed {summary.completedCount}
-                </span>
-                <span className="font-semibold text-success">Collected {formatCurrency(summary.received)}</span>
-                <span className="font-semibold text-warning">Balance {formatCurrency(summary.remaining)}</span>
-              </div>
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="relative h-9 w-9 shrink-0"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-label="Filters"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-semibold text-secondary-foreground">
+                {activeFilterCount}
+              </span>
             )}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> New Collection
-            </Button>
-          </DialogTrigger>
+          </Button>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="icon" className="h-9 w-9 shrink-0 md:w-auto md:gap-2 md:px-4">
+                <Plus className="h-4 w-4" />
+                <span className="hidden md:inline">New Collection</span>
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Collection</DialogTitle>
@@ -317,141 +339,219 @@ export default function Collections() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
+
+        {/* Compact stat strip — scrolls horizontally rather than wrapping. */}
+        {summary && (
+          <div className="-mx-4 flex items-center gap-3 overflow-x-auto px-4 text-xs md:mx-0 md:gap-4 md:px-0 md:text-sm">
+            <span className="flex shrink-0 items-center gap-1.5 font-semibold">
+              <span className="h-2 w-2 rounded-full bg-warning" /> {summary.pendingCount} Pending
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 font-semibold">
+              <span className="h-2 w-2 rounded-full bg-success" /> {summary.completedCount} Done
+            </span>
+            <span className="shrink-0 font-semibold text-success">{formatCurrency(summary.received)}</span>
+            <span className="shrink-0 font-semibold text-warning">{formatCurrency(summary.remaining)}</span>
+            {amountQuery.trim() && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-semibold">
+                {visibleCollections?.length ?? 0} results
+              </span>
+            )}
           </div>
-        </div>
+        )}
 
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as CollectionStatus | "ALL")}>
-            <SelectTrigger className="h-8 flex-1 text-xs sm:min-w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTERS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Active filters as chips — keeps long employee/client names readable. */}
+        {activeFilterChips.length > 0 && (
+          <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={chip.onClear}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-secondary-light px-2.5 py-1 text-xs font-medium text-secondary"
+              >
+                <span className="max-w-[140px] truncate">{chip.label}</span>
+                <X className="h-3 w-3 shrink-0" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="shrink-0 px-1.5 py-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
 
-          <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-            <SelectTrigger className="h-8 flex-1 text-xs sm:min-w-[140px]">
-              <SelectValue placeholder="Employee" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Employees</SelectItem>
-              {employees?.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filter panel — collapsed by default so cards stay above the fold. */}
+        {filtersOpen && (
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-5">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as CollectionStatus | "ALL")}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FILTERS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger className="h-8 flex-1 text-xs sm:min-w-[140px]">
-              <SelectValue placeholder="Client" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Clients</SelectItem>
-              {clients?.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Employee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Employees</SelectItem>
+                {employees?.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <DateRangePicker value={dateRange} onChange={setDateRange} className="h-8 flex-1 text-xs sm:min-w-[160px]" />
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Client" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Clients</SelectItem>
+                {clients?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 text-xs text-muted-foreground" onClick={clearFilters}>
-              <X className="h-3 w-3" /> Clear filters
-            </Button>
-          )}
-        </div>
+            <DateRangePicker value={dateRange} onChange={setDateRange} className="h-8 w-full text-xs" />
+
+            <div className="col-span-2 flex gap-2 md:col-span-1">
+              <Select value={amountField} onValueChange={(v) => setAmountField(v as typeof amountField)}>
+                <SelectTrigger className="h-8 w-24 shrink-0 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AMOUNT_FIELDS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                placeholder="Amount"
+                className="h-8 min-w-0 flex-1 text-xs"
+                value={amountQuery}
+                onChange={(e) => setAmountQuery(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="border-0 bg-transparent shadow-none md:border md:bg-card md:shadow-soft-sm">
+        <CardContent className="p-0 md:p-6 md:pt-6">
           {isLoading ? (
             <LoadingState />
           ) : !visibleCollections || visibleCollections.length === 0 ? (
             <EmptyState icon={Wallet} title="No collections found" description="Try adjusting your filters or create a new collection." />
           ) : (
             <>
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Collected</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleCollections.map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell>
-                          <Link to={`/collections/${c.id}`} className="font-medium hover:text-secondary">
-                            {c.client.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{c.assignedEmployee.name}</TableCell>
-                        <TableCell className="text-success">{formatCurrency(c.receivedAmount)}</TableCell>
-                        <TableCell className="text-warning">{formatCurrency(c.remainingAmount)}</TableCell>
-                        <TableCell className="font-medium">{formatCurrency(c.totalAmount)}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={c.status} />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(c.dueDate)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id, c.client.name)}>
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              {/* Passed via Link state so the detail page can offer
+                  prev/next navigation through this exact filtered/ordered
+                  list, and show "N of total". */}
+              {(() => {
+                const collectionIds = visibleCollections.map((c) => c.id);
+                return (
+                  <>
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10">#</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Employee</TableHead>
+                            <TableHead>Collected</TableHead>
+                            <TableHead>Balance</TableHead>
+                            <TableHead>Total</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {visibleCollections.map((c, index) => (
+                            <TableRow key={c.id}>
+                              <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                              <TableCell>
+                                <Link
+                                  to={`/collections/${c.id}`}
+                                  state={{ collectionIds }}
+                                  className="font-medium hover:text-secondary"
+                                >
+                                  {c.client.name}
+                                </Link>
+                              </TableCell>
+                              <TableCell>{c.assignedEmployee.name}</TableCell>
+                              <TableCell className="text-success">{formatCurrency(c.receivedAmount)}</TableCell>
+                              <TableCell className="text-warning">{formatCurrency(c.remainingAmount)}</TableCell>
+                              <TableCell className="font-medium">{formatCurrency(c.totalAmount)}</TableCell>
+                              <TableCell>
+                                <StatusBadge status={c.status} />
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{formatDate(c.dueDate)}</TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id, c.client.name)}>
+                                  <Trash2 className="h-4 w-4 text-danger" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
 
-              <MobileCardList>
-                {visibleCollections.map((c) => (
-                  <MobileCard key={c.id}>
-                    <MobileCardHeader>
-                      <Link to={`/collections/${c.id}`} className="min-w-0">
-                        <p className="truncate font-semibold text-foreground hover:text-secondary">{c.client.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{c.assignedEmployee.name}</p>
-                      </Link>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <StatusBadge status={c.status} />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleDelete(c.id, c.client.name)}
-                        >
-                          <Trash2 className="h-4 w-4 text-danger" />
-                        </Button>
-                      </div>
-                    </MobileCardHeader>
-                    <Link to={`/collections/${c.id}`}>
-                      <div className="divide-y divide-border">
-                        <MobileCardRow label="Collected" value={<span className="text-success">{formatCurrency(c.receivedAmount)}</span>} />
-                        <MobileCardRow label="Balance" value={<span className="text-warning">{formatCurrency(c.remainingAmount)}</span>} />
-                        <MobileCardRow label="Total" value={formatCurrency(c.totalAmount)} />
-                        <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />
-                      </div>
-                    </Link>
-                  </MobileCard>
-                ))}
-              </MobileCardList>
+                    <MobileCardList>
+                      {visibleCollections.map((c, index) => (
+                        <MobileCard key={c.id}>
+                          <MobileCardHeader>
+                            <Link to={`/collections/${c.id}`} state={{ collectionIds }} className="min-w-0">
+                              <p className="truncate text-xs font-medium text-muted-foreground">#{index + 1}</p>
+                              <p className="truncate font-semibold text-foreground hover:text-secondary">{c.client.name}</p>
+                              <p className="truncate text-xs text-muted-foreground">{c.assignedEmployee.name}</p>
+                            </Link>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <StatusBadge status={c.status} />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleDelete(c.id, c.client.name)}
+                              >
+                                <Trash2 className="h-4 w-4 text-danger" />
+                              </Button>
+                            </div>
+                          </MobileCardHeader>
+                          <Link to={`/collections/${c.id}`} state={{ collectionIds }}>
+                            <div className="divide-y divide-border">
+                              <MobileCardRow label="Collected" value={<span className="text-success">{formatCurrency(c.receivedAmount)}</span>} />
+                              <MobileCardRow label="Balance" value={<span className="text-warning">{formatCurrency(c.remainingAmount)}</span>} />
+                              <MobileCardRow label="Total" value={formatCurrency(c.totalAmount)} />
+                              <MobileCardRow label="Due Date" value={formatDate(c.dueDate)} />
+                            </div>
+                          </Link>
+                        </MobileCard>
+                      ))}
+                    </MobileCardList>
+                  </>
+                );
+              })()}
             </>
           )}
         </CardContent>

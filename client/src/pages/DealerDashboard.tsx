@@ -78,14 +78,16 @@ export default function DealerDashboard() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {AMOUNT_CARDS.map(({ key, label, icon: Icon, tone, bg }) => (
               <Card key={key} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-soft-md">
-                <CardContent className="flex items-center justify-between gap-2 p-4 sm:gap-3 sm:pt-6">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">{label}</p>
-                    <p className="mt-1 truncate text-lg font-semibold sm:text-xl">{formatCurrency(data[key])}</p>
+                <CardContent className="p-3 sm:p-4 sm:pt-6">
+                  {/* Icon sits inline with the label so the amount below gets
+                      the card's full width — it must never be truncated. */}
+                  <div className="flex items-center gap-2">
+                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full sm:h-8 sm:w-8 ${bg}`}>
+                      <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${tone}`} />
+                    </div>
+                    <p className="min-w-0 text-[11px] font-medium leading-tight text-muted-foreground sm:text-xs">{label}</p>
                   </div>
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 ${bg}`}>
-                    <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${tone}`} />
-                  </div>
+                  <p className="mt-2 text-base font-semibold tabular-nums sm:text-xl">{formatCurrency(data[key])}</p>
                 </CardContent>
               </Card>
             ))}

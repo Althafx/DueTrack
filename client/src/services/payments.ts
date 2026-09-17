@@ -17,3 +17,8 @@ export async function updatePayment(id: string, payload: UpdatePaymentRequest): 
   const { data } = await api.patch<{ payment: PaymentDTO }>(`/payments/${id}`, payload);
   return data.payment;
 }
+
+export async function verifyPayment(id: string, verified: boolean): Promise<PaymentDTO> {
+  const { data } = await api.patch<{ payment: PaymentDTO }>(`/payments/${id}/verify`, { verified });
+  return data.payment;
+}

@@ -55,6 +55,7 @@ export interface PaymentRow {
   remarks: string | null;
   payment_date: string;
   created_at: string;
+  verified: number;
 }
 
 export interface PaymentWithRefsRow extends PaymentRow {

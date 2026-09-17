@@ -106,5 +106,6 @@ export function toPaymentDTO(payment: PaymentWithRefsRow): PaymentDTO {
     remarks: payment.remarks ?? undefined,
     paymentDate: payment.payment_date,
     createdAt: payment.created_at,
+    verified: payment.verified === 1,
   };
 }

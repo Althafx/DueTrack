@@ -11,7 +11,7 @@ export function EmployeeLayout() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-primary px-4 py-3 text-primary-foreground">
         <div>
           <p className="font-semibold">Due<span className="text-secondary">Track</span></p>

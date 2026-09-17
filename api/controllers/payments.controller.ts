@@ -7,6 +7,7 @@ import {
   findPaymentById,
   findPaymentWithRefs,
   listPaymentsWithRefs,
+  setPaymentVerified,
   updatePaymentAndCollection,
   type PaymentListFilter,
 } from "../db/payments";
@@ -37,6 +38,10 @@ export const updatePaymentSchema = z.object({
   amount: z.number().positive("Amount must be greater than 0"),
   paymentMethod: z.enum(["CASH", "BANK_TRANSFER", "UPI", "OTHER"]).optional(),
   remarks: z.string().optional(),
+});
+
+export const verifyPaymentSchema = z.object({
+  verified: z.boolean(),
 });
 
 export const listPayments = asyncHandler(async (req: Request, res: Response) => {
@@ -141,6 +146,18 @@ export const updatePayment = asyncHandler(async (req: Request, res: Response) =>
     nextRemainingAmount: nextRemaining,
     nextStatus,
   });
+
+  const populated = await findPaymentWithRefs(req.params.id);
+  res.json({ payment: toPaymentDTO(populated!) });
+});
+
+export const verifyPayment = asyncHandler(async (req: Request, res: Response) => {
+  const { verified } = req.body as z.infer<typeof verifyPaymentSchema>;
+
+  const payment = await findPaymentById(req.params.id);
+  if (!payment) throw new ApiError(404, "Payment not found");
+
+  await setPaymentVerified(payment.id, verified);
 
   const populated = await findPaymentWithRefs(req.params.id);
   res.json({ payment: toPaymentDTO(populated!) });

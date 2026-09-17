@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Edit2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Edit2, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,8 +29,14 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
   OTHER: "Other",
 };
 
+interface CollectionNavState {
+  collectionIds?: string[];
+}
+
 export default function CollectionDetail() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PaymentDTO | null>(null);
 
@@ -40,6 +46,29 @@ export default function CollectionDetail() {
   const updateMutation = useUpdateCollection(id ?? "");
   const updatePaymentMutation = useUpdatePayment();
 
+  // The ordered list of collection IDs the user was browsing when they
+  // opened this one — passed through Link state from the Collections page.
+  // Lets prev/next step through the exact same filtered/sorted list rather
+  // than some arbitrary global order. Absent on a direct visit/refresh, in
+  // which case prev/next simply doesn't render.
+  const collectionIds = (location.state as CollectionNavState | null)?.collectionIds;
+
+  const { currentIndex, prevId, nextId } = useMemo(() => {
+    if (!collectionIds || !id) return { currentIndex: -1, prevId: undefined, nextId: undefined };
+    const index = collectionIds.indexOf(id);
+    if (index === -1) return { currentIndex: -1, prevId: undefined, nextId: undefined };
+    return {
+      currentIndex: index,
+      prevId: index > 0 ? collectionIds[index - 1] : undefined,
+      nextId: index < collectionIds.length - 1 ? collectionIds[index + 1] : undefined,
+    };
+  }, [collectionIds, id]);
+
+  function goTo(targetId: string | undefined) {
+    if (!targetId) return;
+    navigate(`/collections/${targetId}`, { state: { collectionIds } });
+  }
+
   if (isLoading || !collection) {
     return <LoadingState label="Loading collection..." />;
   }
@@ -47,76 +76,109 @@ export default function CollectionDetail() {
   const activeEmployees = employees?.filter((e) => e.status === "ACTIVE" || e.id === collection.assignedEmployee.id) ?? [];
 
   return (
-    <div className="animate-page space-y-6">
-      <div className="sticky top-0 z-10 -mx-4 bg-background px-4 pb-2 pt-4 md:-mx-8 md:px-8 md:pt-8 lg:-mx-10 lg:px-10">
-        <Link to="/collections" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to Collections
-        </Link>
-      </div>
+    <div className="animate-page space-y-4 md:space-y-6">
+      <div className="sticky top-0 z-10 -mx-4 space-y-3 border-b border-border bg-background px-4 pb-3 pt-3 md:-mx-8 md:border-0 md:px-8 md:pt-8 lg:-mx-10 lg:px-10">
+        <div className="flex items-center justify-between gap-2">
+          <Link to="/collections" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Link>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Client Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <p className="text-base font-medium text-foreground">{collection.client.name}</p>
-            <p className="text-muted-foreground">{collection.client.phone}</p>
-            <p className="text-muted-foreground">{collection.client.address}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Collection Summary</CardTitle>
-            <EditCollectionDialog
-              open={editOpen}
-              onOpenChange={setEditOpen}
-              employees={activeEmployees}
-              collection={collection}
-              onSubmit={async (payload) => {
-                try {
-                  await updateMutation.mutateAsync(payload);
-                  toast.success("Collection updated");
-                  setEditOpen(false);
-                } catch (error) {
-                  toast.error(getErrorMessage(error));
-                }
-              }}
-              isPending={updateMutation.isPending}
-            />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <CollectionProgress received={collection.receivedAmount} total={collection.totalAmount} />
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Status</p>
-                <div className="mt-1">
-                  <StatusBadge status={collection.status} />
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
-                <p className="mt-1 font-medium">{collection.assignedEmployee.name}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Collection Date</p>
-                <p className="mt-1 font-medium">{formatDate(collection.collectionDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Due Date</p>
-                <p className="mt-1 font-medium">{formatDate(collection.dueDate)}</p>
-              </div>
+          {currentIndex !== -1 && collectionIds && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                {currentIndex + 1} of {collectionIds.length}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!prevId}
+                onClick={() => goTo(prevId)}
+                aria-label="Previous collection"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!nextId}
+                onClick={() => goTo(nextId)}
+                aria-label="Next collection"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            {collection.notes && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Notes</p>
-                <p className="mt-1 text-sm">{collection.notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </div>
+
+        {/* Compact client identity, merged into the sticky header instead of
+            its own full-width card — keeps the collection summary/payments
+            above the fold. */}
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{collection.client.name}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3 shrink-0" /> {collection.client.phone}
+              </span>
+              <span className="flex items-center gap-1 truncate">
+                <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{collection.client.address}</span>
+              </span>
+            </div>
+          </div>
+          <StatusBadge status={collection.status} />
+        </div>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Collection Summary</CardTitle>
+          <EditCollectionDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            employees={activeEmployees}
+            collection={collection}
+            onSubmit={async (payload) => {
+              try {
+                await updateMutation.mutateAsync(payload);
+                toast.success("Collection updated");
+                setEditOpen(false);
+              } catch (error) {
+                toast.error(getErrorMessage(error));
+              }
+            }}
+            isPending={updateMutation.isPending}
+          />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <CollectionProgress received={collection.receivedAmount} total={collection.totalAmount} />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Total Amount</p>
+              <p className="mt-1 font-medium">{formatCurrency(collection.totalAmount)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
+              <p className="mt-1 font-medium">{collection.assignedEmployee.name}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Collection Date</p>
+              <p className="mt-1 font-medium">{formatDate(collection.collectionDate)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Due Date</p>
+              <p className="mt-1 font-medium">{formatDate(collection.dueDate)}</p>
+            </div>
+          </div>
+          {collection.notes && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Notes</p>
+              <p className="mt-1 text-sm">{collection.notes}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

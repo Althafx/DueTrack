@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createPayment, fetchPayments, updatePayment } from "@/services/payments";
+import { createPayment, fetchPayments, updatePayment, verifyPayment } from "@/services/payments";
 import type { CreatePaymentRequest, UpdatePaymentRequest } from "@shared/types";
 
 export function usePayments(collectionId?: string) {
@@ -37,6 +37,17 @@ export function useUpdatePayment() {
       queryClient.invalidateQueries({ queryKey: ["collections"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
+  });
+}
+
+export function useVerifyPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, verified }: { id: string; verified: boolean }) => verifyPayment(id, verified),
+    onSuccess: (payment) => {
+      queryClient.invalidateQueries({ queryKey: ["payments", payment.collection] });
+      queryClient.invalidateQueries({ queryKey: ["payments", "all"] });
     },
   });
 }

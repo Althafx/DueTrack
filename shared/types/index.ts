@@ -59,6 +59,7 @@ export interface PaymentDTO {
   remarks?: string;
   paymentDate: string;
   createdAt: string;
+  verified: boolean;
 }
 
 export interface DashboardSummaryDTO {

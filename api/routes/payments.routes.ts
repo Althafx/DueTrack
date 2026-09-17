@@ -6,6 +6,8 @@ import {
   listPayments,
   updatePayment,
   updatePaymentSchema,
+  verifyPayment,
+  verifyPaymentSchema,
 } from "../controllers/payments.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
@@ -19,5 +21,6 @@ router.get("/", listPayments);
 router.post("/", requireRole("EMPLOYEE"), validateBody(createPaymentSchema), createPayment);
 router.get("/:id", getPayment);
 router.patch("/:id", requireRole("DEALER"), validateBody(updatePaymentSchema), updatePayment);
+router.patch("/:id/verify", requireRole("DEALER"), validateBody(verifyPaymentSchema), verifyPayment);
 
 export default router;
