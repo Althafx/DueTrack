@@ -1,6 +1,15 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { findUserById, findUserByUsername, updateUserPassword } from "../db/users";
+import {
+  createUser,
+  deleteDealerById,
+  findMainDealerId,
+  findUserById,
+  findUserByUsername,
+  listDealers,
+  updateUser,
+  updateUserPassword,
+} from "../db/users";
 import { AUTH_COOKIE_NAME, COOKIE_MAX_AGE_MS, signToken } from "../utils/jwt";
 import { ApiError } from "../utils/status";
 import { toUserDTO } from "../utils/mappers";
@@ -15,6 +24,18 @@ export const loginSchema = z.object({
 
 export const changeMyPasswordSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const updateMeSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  username: z.string().min(1, "Username is required").optional(),
+});
+
+export const createDealerSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  phone: z.string().min(1, "Phone is required"),
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 function setCookieOptions() {
@@ -73,6 +94,14 @@ export const getMyPassword = asyncHandler(async (req: Request, res: Response) =>
   res.json({ password: decrypt(user.encrypted_password!) });
 });
 
+export const updateMe = asyncHandler(async (req: Request, res: Response) => {
+  const { name, username } = req.body as z.infer<typeof updateMeSchema>;
+  await updateUser(req.user!.id, { name, username });
+
+  const updated = await findUserById(req.user!.id);
+  res.json({ user: toUserDTO(updated!) });
+});
+
 export const changeMyPassword = asyncHandler(async (req: Request, res: Response) => {
   const { newPassword } = req.body as z.infer<typeof changeMyPasswordSchema>;
   const user = await findUserById(req.user!.id);
@@ -82,4 +111,48 @@ export const changeMyPassword = asyncHandler(async (req: Request, res: Response)
   await updateUserPassword(user.id, { password, encryptedPassword });
 
   res.json({ message: "Password updated" });
+});
+
+export const getDealers = asyncHandler(async (req: Request, res: Response) => {
+  const [dealers, mainDealerId] = await Promise.all([listDealers(), findMainDealerId()]);
+  res.json({
+    dealers: dealers.map(toUserDTO),
+    isMainDealer: req.user!.id === mainDealerId,
+  });
+});
+
+export const createDealer = asyncHandler(async (req: Request, res: Response) => {
+  const mainDealerId = await findMainDealerId();
+  if (req.user!.id !== mainDealerId) {
+    throw new ApiError(403, "Only the main admin can create other admin accounts");
+  }
+
+  const { name, phone, username, password } = req.body as z.infer<typeof createDealerSchema>;
+  const { password: hash, encryptedPassword } = await hashAndEncryptPassword(password);
+
+  const dealer = await createUser({
+    name,
+    phone,
+    username,
+    password: hash,
+    encryptedPassword,
+    role: "DEALER",
+  });
+
+  res.status(201).json({ user: toUserDTO(dealer) });
+});
+
+export const deleteDealer = asyncHandler(async (req: Request, res: Response) => {
+  const mainDealerId = await findMainDealerId();
+  if (req.user!.id !== mainDealerId) {
+    throw new ApiError(403, "Only the main admin can delete other admin accounts");
+  }
+  if (req.params.id === mainDealerId) {
+    throw new ApiError(400, "The main admin account cannot be deleted");
+  }
+
+  const deleted = await deleteDealerById(req.params.id);
+  if (!deleted) throw new ApiError(404, "Admin not found");
+
+  res.json({ message: "Admin deleted" });
 });

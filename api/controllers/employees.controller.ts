@@ -20,7 +20,6 @@ export const updateEmployeeSchema = z.object({
   phone: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
   password: z.string().min(6).optional(),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
 
 export const listEmployees = asyncHandler(async (_req: Request, res: Response) => {
@@ -75,9 +74,9 @@ export const updateEmployee = asyncHandler(async (req: Request, res: Response) =
   const employee = await findEmployeeById(req.params.id);
   if (!employee) throw new ApiError(404, "Employee not found");
 
-  const { name, phone, username, password, status } = req.body as z.infer<typeof updateEmployeeSchema>;
+  const { name, phone, username, password } = req.body as z.infer<typeof updateEmployeeSchema>;
 
-  const patch: Parameters<typeof updateUser>[1] = { name, phone, username, status };
+  const patch: Parameters<typeof updateUser>[1] = { name, phone, username };
   if (password) {
     const { password: hash, encryptedPassword } = await hashAndEncryptPassword(password);
     patch.password = hash;

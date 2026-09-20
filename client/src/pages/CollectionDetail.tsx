@@ -73,7 +73,7 @@ export default function CollectionDetail() {
     return <LoadingState label="Loading collection..." />;
   }
 
-  const activeEmployees = employees?.filter((e) => e.status === "ACTIVE" || e.id === collection.assignedEmployee.id) ?? [];
+  const employeeOptions = employees ?? [];
 
   return (
     <div className="animate-page space-y-4 md:space-y-6">
@@ -137,7 +137,7 @@ export default function CollectionDetail() {
           <EditCollectionDialog
             open={editOpen}
             onOpenChange={setEditOpen}
-            employees={activeEmployees}
+            employees={employeeOptions}
             collection={collection}
             onSubmit={async (payload) => {
               try {

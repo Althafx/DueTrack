@@ -1,15 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Pencil, Plus, Search, Trash2, UserCog } from "lucide-react";
+import { Eye, Pencil, Plus, Search, Trash2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MobileCard, MobileCardHeader, MobileCardList, MobileCardRow } from "@/components/shared/MobileCard";
 import { useConfirm } from "@/components/shared/ConfirmDialogProvider";
@@ -23,7 +21,7 @@ import {
   useUpdateEmployee,
 } from "@/hooks/useEmployees";
 import { getErrorMessage } from "@/services/api";
-import type { CreateEmployeeRequest, UpdateEmployeeRequest, UserDTO, UserStatus } from "@shared/types";
+import type { CreateEmployeeRequest, UpdateEmployeeRequest, UserDTO } from "@shared/types";
 
 const EMPTY_FORM: CreateEmployeeRequest = { name: "", phone: "", username: "", password: "" };
 
@@ -95,15 +93,17 @@ export default function Employees() {
                 <DialogTitle>Add Employee</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </div>
-                <div className="space-y-2">
+                <div className="space-y-2 border-t border-border pt-4">
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
@@ -150,58 +150,65 @@ export default function Employees() {
           ) : !visibleEmployees || visibleEmployees.length === 0 ? (
             <EmptyState icon={UserCog} title="No employees found" description="Add an employee to start assigning collections." />
           ) : (
-            <>
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleEmployees.map((employee) => (
-                      <TableRow key={employee.id}>
-                        <TableCell>
-                          <Link to={`/employees/${employee.id}`} className="font-medium hover:text-secondary">
-                            {employee.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{employee.phone}</TableCell>
-                        <TableCell className="text-muted-foreground">{employee.username}</TableCell>
-                        <TableCell>
-                          <Badge variant={employee.status === "ACTIVE" ? "success" : "muted"}>
-                            {employee.status === "ACTIVE" ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => setEditingEmployee(employee)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(employee.id, employee.name)}>
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+            (() => {
+              const employeeIds = visibleEmployees.map((e) => e.id);
+              return (
+                <>
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Username</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visibleEmployees.map((employee, index) => (
+                          <TableRow key={employee.id}>
+                            <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                            <TableCell>
+                              <Link
+                                to={`/employees/${employee.id}`}
+                                state={{ employeeIds }}
+                                className="font-medium hover:text-secondary"
+                              >
+                                {employee.name}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{employee.phone}</TableCell>
+                            <TableCell className="text-muted-foreground">{employee.username}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => setEditingEmployee(employee)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(employee.id, employee.name)}>
+                                <Trash2 className="h-4 w-4 text-danger" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
-              <MobileCardList>
-                {visibleEmployees.map((employee) => (
-                  <EmployeeMobileCard
-                    key={employee.id}
-                    employee={employee}
-                    onDelete={handleDelete}
-                    onEdit={setEditingEmployee}
-                  />
-                ))}
-              </MobileCardList>
-            </>
+                  <MobileCardList>
+                    {visibleEmployees.map((employee, index) => (
+                      <EmployeeMobileCard
+                        key={employee.id}
+                        employee={employee}
+                        index={index}
+                        employeeIds={employeeIds}
+                        onDelete={handleDelete}
+                        onEdit={setEditingEmployee}
+                      />
+                    ))}
+                  </MobileCardList>
+                </>
+              );
+            })()
           )}
         </CardContent>
       </Card>
@@ -213,23 +220,25 @@ export default function Employees() {
 
 function EmployeeMobileCard({
   employee,
+  index,
+  employeeIds,
   onDelete,
   onEdit,
 }: {
   employee: UserDTO;
+  index: number;
+  employeeIds: string[];
   onDelete: (id: string, name: string) => void;
   onEdit: (employee: UserDTO) => void;
 }) {
   return (
     <MobileCard>
       <MobileCardHeader>
-        <Link to={`/employees/${employee.id}`} className="font-semibold text-foreground hover:text-secondary">
-          {employee.name}
+        <Link to={`/employees/${employee.id}`} state={{ employeeIds }} className="min-w-0">
+          <p className="truncate text-xs font-medium text-muted-foreground">#{index + 1}</p>
+          <p className="truncate font-semibold text-foreground hover:text-secondary">{employee.name}</p>
         </Link>
         <div className="flex shrink-0 items-center gap-1">
-          <Badge variant={employee.status === "ACTIVE" ? "success" : "muted"}>
-            {employee.status === "ACTIVE" ? "Active" : "Inactive"}
-          </Badge>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(employee)}>
             <Pencil className="h-4 w-4" />
           </Button>
@@ -262,7 +271,6 @@ function EditEmployeeForm({ employee, onOpenChange }: { employee: UserDTO; onOpe
   const [name, setName] = useState(employee.name);
   const [phone, setPhone] = useState(employee.phone);
   const [username, setUsername] = useState(employee.username);
-  const [status, setStatus] = useState<UserStatus>(employee.status);
   const [newPassword, setNewPassword] = useState("");
   const [revealPassword, setRevealPassword] = useState(false);
 
@@ -271,7 +279,7 @@ function EditEmployeeForm({ employee, onOpenChange }: { employee: UserDTO; onOpe
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload: UpdateEmployeeRequest = { name, phone, username, status };
+    const payload: UpdateEmployeeRequest = { name, phone, username };
     if (newPassword.trim()) {
       payload.password = newPassword.trim();
     }
@@ -291,45 +299,39 @@ function EditEmployeeForm({ employee, onOpenChange }: { employee: UserDTO; onOpe
           <DialogTitle>Edit Employee</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="editName">Name</Label>
-            <Input id="editName" required value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="editPhone">Phone</Label>
-            <Input id="editPhone" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="editName">Name</Label>
+              <Input id="editName" required value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editPhone">Phone</Label>
+              <Input id="editPhone" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="editUsername">Username</Label>
             <Input id="editUsername" required value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as UserStatus)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-muted-foreground">Current Password</Label>
+              {!revealPassword && (
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setRevealPassword(true)}>
+                  <Eye className="h-3.5 w-3.5" /> Reveal
+                </Button>
+              )}
+            </div>
+            {revealPassword &&
+              (passwordQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground">Loading...</p>
+              ) : (
+                <PasswordInput readOnly value={passwordQuery.data ?? ""} />
+              ))}
           </div>
 
-          <div className="space-y-2 rounded-md border border-border p-3">
-            <Label>Current Password</Label>
-            {!revealPassword ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => setRevealPassword(true)}>
-                Show current password
-              </Button>
-            ) : passwordQuery.isLoading ? (
-              <p className="text-xs text-muted-foreground">Loading...</p>
-            ) : (
-              <PasswordInput readOnly value={passwordQuery.data ?? ""} />
-            )}
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 border-t border-border pt-4">
             <Label htmlFor="editPassword">New Password</Label>
             <PasswordInput
               id="editPassword"

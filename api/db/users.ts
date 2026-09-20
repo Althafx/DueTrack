@@ -50,6 +50,25 @@ export async function listEmployees(): Promise<UserRow[]> {
   return results;
 }
 
+export async function listDealers(): Promise<UserRow[]> {
+  const db = getDB();
+  const { results } = await db
+    .prepare(`SELECT ${selectColumns()} FROM users WHERE role = 'DEALER' ORDER BY created_at ASC`)
+    .all<UserRow>();
+  return results;
+}
+
+// The main admin is the earliest-created DEALER account — there's no
+// separate "is main admin" flag, so this is derived rather than stored.
+// Only the main admin may create or delete other dealer accounts.
+export async function findMainDealerId(): Promise<string | null> {
+  const db = getDB();
+  const row = await db
+    .prepare(`SELECT id FROM users WHERE role = 'DEALER' ORDER BY created_at ASC LIMIT 1`)
+    .first<{ id: string }>();
+  return row?.id ?? null;
+}
+
 export interface CreateUserInput {
   name: string;
   username: string;
@@ -140,5 +159,11 @@ export async function updateUserPassword(id: string, passwords: { password: stri
 export async function deleteEmployeeById(id: string): Promise<boolean> {
   const db = getDB();
   const result = await db.prepare(`DELETE FROM users WHERE id = ? AND role = 'EMPLOYEE'`).bind(id).run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
+export async function deleteDealerById(id: string): Promise<boolean> {
+  const db = getDB();
+  const result = await db.prepare(`DELETE FROM users WHERE id = ? AND role = 'DEALER'`).bind(id).run();
   return (result.meta.changes ?? 0) > 0;
 }

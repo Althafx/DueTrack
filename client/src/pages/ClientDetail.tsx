@@ -1,5 +1,7 @@
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useMemo } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -10,9 +12,36 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { useClient } from "@/hooks/useClients";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
+interface ClientNavState {
+  clientIds?: string[];
+}
+
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { data, isLoading } = useClient(id);
+
+  // The ordered list of client IDs the user was browsing when they opened
+  // this one — passed through Link state from the Clients page. Lets
+  // prev/next step through that exact list. Absent on a direct visit/refresh.
+  const clientIds = (location.state as ClientNavState | null)?.clientIds;
+
+  const { currentIndex, prevId, nextId } = useMemo(() => {
+    if (!clientIds || !id) return { currentIndex: -1, prevId: undefined, nextId: undefined };
+    const index = clientIds.indexOf(id);
+    if (index === -1) return { currentIndex: -1, prevId: undefined, nextId: undefined };
+    return {
+      currentIndex: index,
+      prevId: index > 0 ? clientIds[index - 1] : undefined,
+      nextId: index < clientIds.length - 1 ? clientIds[index + 1] : undefined,
+    };
+  }, [clientIds, id]);
+
+  function goTo(targetId: string | undefined) {
+    if (!targetId) return;
+    navigate(`/clients/${targetId}`, { state: { clientIds } });
+  }
 
   if (isLoading || !data) {
     return <LoadingState label="Loading client..." />;
@@ -22,10 +51,38 @@ export default function ClientDetail() {
 
   return (
     <div className="animate-page space-y-6">
-      <div className="sticky top-0 z-10 -mx-4 bg-background px-4 pb-2 pt-4 md:-mx-8 md:px-8 md:pt-8 lg:-mx-10 lg:px-10">
+      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-2 bg-background px-4 pb-2 pt-4 md:-mx-8 md:px-8 md:pt-8 lg:-mx-10 lg:px-10">
         <Link to="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Clients
         </Link>
+
+        {currentIndex !== -1 && clientIds && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {currentIndex + 1} of {clientIds.length}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!prevId}
+              onClick={() => goTo(prevId)}
+              aria-label="Previous client"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!nextId}
+              onClick={() => goTo(nextId)}
+              aria-label="Next client"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <Card>

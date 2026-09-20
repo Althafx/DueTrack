@@ -1,6 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { changeMyPassword, getMe, getMyPassword, login, logout } from "@/services/auth";
-import type { ChangePasswordRequest, LoginRequest } from "@shared/types";
+import {
+  changeMyPassword,
+  createDealer,
+  deleteDealer,
+  getDealers,
+  getMe,
+  getMyPassword,
+  login,
+  logout,
+  updateMe,
+} from "@/services/auth";
+import type { ChangePasswordRequest, CreateDealerRequest, LoginRequest, UpdateMeRequest } from "@shared/types";
 
 export function useCurrentUser() {
   return useQuery({
@@ -43,5 +53,43 @@ export function useMyPassword(enabled: boolean) {
 export function useChangeMyPassword() {
   return useMutation({
     mutationFn: (payload: ChangePasswordRequest) => changeMyPassword(payload),
+  });
+}
+
+export function useUpdateMe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateMeRequest) => updateMe(payload),
+    onSuccess: (user) => {
+      queryClient.setQueryData(["auth", "me"], user);
+    },
+  });
+}
+
+export function useCreateDealer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateDealerRequest) => createDealer(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "dealers"] });
+    },
+  });
+}
+
+export function useDealers(enabled: boolean) {
+  return useQuery({
+    queryKey: ["auth", "dealers"],
+    queryFn: getDealers,
+    enabled,
+  });
+}
+
+export function useDeleteDealer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDealer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "dealers"] });
+    },
   });
 }

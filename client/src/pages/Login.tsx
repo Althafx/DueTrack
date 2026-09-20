@@ -72,12 +72,6 @@ export default function Login() {
               {loginMutation.isPending ? "Signing in..." : "Sign in"}
             </Button>
           </form>
-
-          <div className="mt-6 rounded-md bg-muted p-3 text-xs text-muted-foreground">
-            <p className="mb-1 font-medium text-foreground">Demo credentials (development only)</p>
-            <p>Dealer: dealer / password123</p>
-            <p>Employee: rahul / password123</p>
-          </div>
         </CardContent>
       </Card>
     </div>

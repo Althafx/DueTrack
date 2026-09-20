@@ -129,7 +129,6 @@ export interface UpdateEmployeeRequest {
   phone?: string;
   username?: string;
   password?: string;
-  status?: UserStatus;
 }
 
 export interface CreateCollectionRequest {
@@ -161,6 +160,18 @@ export interface PasswordViewDTO {
 
 export interface ChangePasswordRequest {
   newPassword: string;
+}
+
+export interface UpdateMeRequest {
+  name: string;
+  username?: string;
+}
+
+export interface CreateDealerRequest {
+  name: string;
+  phone: string;
+  username: string;
+  password: string;
 }
 
 export interface CollectionFilters {

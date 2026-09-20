@@ -112,6 +112,19 @@
     @apply bg-background text-foreground antialiased transition-colors duration-200;
     font-feature-settings: "cv11", "ss01";
   }
+
+  /* Browsers force their own autofill background (e.g. Chrome's blue/yellow
+     tint) and ignore a plain background-color override — this inset
+     box-shadow trick is the standard workaround, keeping autofilled inputs
+     visually consistent with the rest of the form. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
 
 @layer utilities {

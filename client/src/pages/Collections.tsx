@@ -72,7 +72,7 @@ export default function Collections() {
   const deleteMutation = useDeleteCollection();
   const confirm = useConfirm();
 
-  const activeEmployees = employees?.filter((e) => e.status === "ACTIVE") ?? [];
+  const employeeOptions = employees ?? [];
 
   const activeFilterCount =
     (statusFilter !== "ALL" ? 1 : 0) +
@@ -282,7 +282,7 @@ export default function Collections() {
                     <SelectValue placeholder="Select an employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {activeEmployees.map((e) => (
+                    {employeeOptions.map((e) => (
                       <SelectItem key={e.id} value={e.id}>
                         {e.name}
                       </SelectItem>

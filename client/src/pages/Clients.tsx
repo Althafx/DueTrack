@@ -114,65 +114,77 @@ export default function Clients() {
           ) : !clients || clients.length === 0 ? (
             <EmptyState icon={UserSquare2} title="No clients found" description="Add a client to start creating collections." />
           ) : (
-            <>
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Address</TableHead>
-                      <TableHead>Added</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell>
-                          <Link to={`/clients/${client.id}`} className="font-medium hover:text-secondary">
-                            {client.name}
+            (() => {
+              const clientIds = clients.map((c) => c.id);
+              return (
+                <>
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Address</TableHead>
+                          <TableHead>Added</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clients.map((client, index) => (
+                          <TableRow key={client.id}>
+                            <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                            <TableCell>
+                              <Link
+                                to={`/clients/${client.id}`}
+                                state={{ clientIds }}
+                                className="font-medium hover:text-secondary"
+                              >
+                                {client.name}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{client.phone}</TableCell>
+                            <TableCell className="max-w-xs truncate text-muted-foreground">{client.address}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(client.createdAt)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id, client.name)}>
+                                <Trash2 className="h-4 w-4 text-danger" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <MobileCardList>
+                    {clients.map((client, index) => (
+                      <MobileCard key={client.id}>
+                        <MobileCardHeader>
+                          <Link to={`/clients/${client.id}`} state={{ clientIds }} className="min-w-0">
+                            <p className="truncate text-xs font-medium text-muted-foreground">#{index + 1}</p>
+                            <p className="truncate font-semibold text-foreground hover:text-secondary">{client.name}</p>
                           </Link>
-                        </TableCell>
-                        <TableCell>{client.phone}</TableCell>
-                        <TableCell className="max-w-xs truncate text-muted-foreground">{client.address}</TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(client.createdAt)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id, client.name)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => handleDelete(client.id, client.name)}
+                          >
                             <Trash2 className="h-4 w-4 text-danger" />
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </MobileCardHeader>
+                        <div className="divide-y divide-border">
+                          <MobileCardRow label="Phone" value={client.phone} />
+                          <MobileCardRow label="Address" value={client.address} />
+                          <MobileCardRow label="Added" value={formatDate(client.createdAt)} />
+                        </div>
+                      </MobileCard>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <MobileCardList>
-                {clients.map((client) => (
-                  <MobileCard key={client.id}>
-                    <MobileCardHeader>
-                      <Link to={`/clients/${client.id}`} className="font-semibold text-foreground hover:text-secondary">
-                        {client.name}
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={() => handleDelete(client.id, client.name)}
-                      >
-                        <Trash2 className="h-4 w-4 text-danger" />
-                      </Button>
-                    </MobileCardHeader>
-                    <div className="divide-y divide-border">
-                      <MobileCardRow label="Phone" value={client.phone} />
-                      <MobileCardRow label="Address" value={client.address} />
-                      <MobileCardRow label="Added" value={formatDate(client.createdAt)} />
-                    </div>
-                  </MobileCard>
-                ))}
-              </MobileCardList>
-            </>
+                  </MobileCardList>
+                </>
+              );
+            })()
           )}
         </CardContent>
       </Card>

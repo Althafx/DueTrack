@@ -2,14 +2,21 @@ import { Router } from "express";
 import {
   changeMyPassword,
   changeMyPasswordSchema,
+  createDealer,
+  createDealerSchema,
+  deleteDealer,
+  getDealers,
   getMyPassword,
   login,
   loginSchema,
   logout,
   me,
+  updateMe,
+  updateMeSchema,
 } from "../controllers/auth.controller";
 import { validateBody } from "../middleware/validate";
 import { requireAuth } from "../middleware/auth";
+import { requireRole } from "../middleware/rbac";
 
 const router = Router();
 
@@ -23,7 +30,11 @@ const router = Router();
 router.post("/login", validateBody(loginSchema), login);
 router.post("/logout", logout);
 router.get("/me", requireAuth, me);
+router.patch("/me", requireAuth, validateBody(updateMeSchema), updateMe);
 router.get("/me/password", requireAuth, getMyPassword);
 router.patch("/me/password", requireAuth, validateBody(changeMyPasswordSchema), changeMyPassword);
+router.get("/dealers", requireAuth, requireRole("DEALER"), getDealers);
+router.post("/dealers", requireAuth, requireRole("DEALER"), validateBody(createDealerSchema), createDealer);
+router.delete("/dealers/:id", requireAuth, requireRole("DEALER"), deleteDealer);
 
 export default router;
