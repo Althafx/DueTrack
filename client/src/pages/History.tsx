@@ -14,7 +14,7 @@ import { useConfirm } from "@/components/shared/ConfirmDialogProvider";
 import { useDeletePayment, usePayments, useVerifyPayment } from "@/hooks/usePayments";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { getErrorMessage } from "@/services/api";
-import { formatCurrency, formatDateTime } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { PaymentDTO } from "@shared/types";
 
@@ -173,7 +173,9 @@ export default function History() {
                       <span className="text-muted-foreground">via {PAYMENT_METHOD_LABEL[p.paymentMethod]} from</span>{" "}
                       <span className="font-medium text-secondary">{p.client.name}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">{formatDateTime(p.paymentDate)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      For {formatDate(p.paymentDate)} &middot; Recorded {formatDateTime(p.createdAt)}
+                    </p>
                     {p.remarks && <p className="text-xs text-muted-foreground">"{p.remarks}"</p>}
                   </div>
 

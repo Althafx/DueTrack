@@ -24,6 +24,20 @@ function isNotFutureDay(value: string): boolean {
   return new Date(value).getTime() <= endOfToday.getTime();
 }
 
+// The payment date picker only lets an employee choose which calendar day a
+// payment happened on (for backdating) — there's no time-of-day input. The
+// time should always be "now", like a message timestamp, never midnight.
+// Parsing a "YYYY-MM-DD" string alone would default to UTC midnight, which
+// renders as 5:30am for an IST viewer — so take the picked day but stamp it
+// with the real current time.
+function resolvePaymentTimestamp(dateOnlyValue: string): Date {
+  const now = new Date();
+  const [year, month, day] = dateOnlyValue.split("-").map(Number);
+  const result = new Date(now);
+  result.setFullYear(year, month - 1, day);
+  return result;
+}
+
 export const createPaymentSchema = z.object({
   collection: z.string().min(1),
   amount: z.number().positive("Amount must be greater than 0"),
@@ -105,7 +119,7 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
     amount,
     paymentMethod,
     remarks,
-    paymentDate: new Date(paymentDate).toISOString(),
+    paymentDate: resolvePaymentTimestamp(paymentDate).toISOString(),
     nextReceivedAmount,
     nextRemainingAmount,
     nextStatus,

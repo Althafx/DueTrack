@@ -196,6 +196,7 @@ export default function CollectionDetail() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
+                      <TableHead>Recorded</TableHead>
                       <TableHead>Employee</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Method</TableHead>
@@ -206,7 +207,8 @@ export default function CollectionDetail() {
                   <TableBody>
                     {payments.map((p) => (
                       <TableRow key={p.id}>
-                        <TableCell className="text-muted-foreground">{formatDateTime(p.paymentDate)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(p.paymentDate)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDateTime(p.createdAt)}</TableCell>
                         <TableCell>{p.employee.name}</TableCell>
                         <TableCell className="font-medium text-success">{formatCurrency(p.amount)}</TableCell>
                         <TableCell>{PAYMENT_METHOD_LABEL[p.paymentMethod]}</TableCell>
@@ -237,7 +239,8 @@ export default function CollectionDetail() {
                       </div>
                     </MobileCardHeader>
                     <div className="divide-y divide-border">
-                      <MobileCardRow label="Date" value={formatDateTime(p.paymentDate)} />
+                      <MobileCardRow label="Date" value={formatDate(p.paymentDate)} />
+                      <MobileCardRow label="Recorded" value={formatDateTime(p.createdAt)} />
                       <MobileCardRow label="Employee" value={p.employee.name} />
                       <MobileCardRow label="Remarks" value={p.remarks || "—"} />
                     </div>

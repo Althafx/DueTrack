@@ -92,10 +92,21 @@ async function seed() {
   console.error("Creating collections and payment history (Feb 2026 - Sep 2026)...");
 
   // Seed window: 1 Feb 2026 through "today" (the seed is meant to always
-  // reach up to the current date so the demo never looks stale).
-  const seedStart = new Date(2026, 1, 1); // 1 Feb 2026
+  // reach up to the current date so the demo never looks stale). Built with
+  // Date.UTC (not `new Date(y, m, d)`, which uses the machine's local
+  // timezone) so the stored instant always lands on the intended calendar
+  // day regardless of what timezone this script is run from.
+  const seedStart = new Date(Date.UTC(2026, 1, 1)); // 1 Feb 2026 UTC
   const seedEnd = new Date(); // today
   const totalSeedDays = Math.max(1, Math.floor((seedEnd.getTime() - seedStart.getTime()) / (24 * 60 * 60 * 1000)));
+
+  // A random time-of-day (not midnight) so seeded payments don't all render
+  // as "12:00 am" — real payments happen at all hours.
+  function randomTimeOfDay(date: Date): Date {
+    const withTime = new Date(date);
+    withTime.setUTCHours(randInt(8, 19), randInt(0, 59), 0, 0);
+    return withTime;
+  }
 
   function randomDateInWindow(): Date {
     const offset = randInt(0, totalSeedDays);
@@ -153,7 +164,7 @@ async function seed() {
       // date, whichever is earlier), never in the future.
       const latestPossible = new Date(Math.min(dueDate.getTime(), seedEnd.getTime()));
       const spanDays = Math.max(1, Math.floor((latestPossible.getTime() - collectionDate.getTime()) / (24 * 60 * 60 * 1000)));
-      const paymentDate = addDays(collectionDate, randInt(1, spanDays));
+      const paymentDate = randomTimeOfDay(addDays(collectionDate, randInt(1, spanDays)));
 
       paymentPlan.push({ amount, method: pick(PAYMENT_METHODS), date: paymentDate, remarks: pick(REMARKS_POOL) });
     }

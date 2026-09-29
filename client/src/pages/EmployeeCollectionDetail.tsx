@@ -15,7 +15,7 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { useCollection } from "@/hooks/useCollections";
 import { useCreatePayment, usePayments } from "@/hooks/usePayments";
 import { getErrorMessage } from "@/services/api";
-import { formatCurrency, formatDateTime, toDateInputValue } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatDateTime, toDateInputValue } from "@/lib/formatters";
 import type { PaymentMethod } from "@shared/types";
 
 const PAYMENT_METHODS: Array<{ label: string; value: PaymentMethod }> = [
@@ -200,7 +200,9 @@ export default function EmployeeCollectionDetail() {
                 <div key={p.id} className="flex items-center justify-between rounded-md border border-border p-3">
                   <div>
                     <p className="font-medium text-success">{formatCurrency(p.amount)}</p>
-                    <p className="text-xs text-muted-foreground">{formatDateTime(p.paymentDate)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      For {formatDate(p.paymentDate)} &middot; Recorded {formatDateTime(p.createdAt)}
+                    </p>
                     {p.remarks && <p className="text-xs text-muted-foreground">{p.remarks}</p>}
                   </div>
                   <span className="text-xs font-medium text-muted-foreground">{p.paymentMethod.replace("_", " ")}</span>

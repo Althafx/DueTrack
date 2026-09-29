@@ -21,6 +21,7 @@ import {
   useUpdateEmployee,
 } from "@/hooks/useEmployees";
 import { getErrorMessage } from "@/services/api";
+import { formatDate } from "@/lib/formatters";
 import type { CreateEmployeeRequest, UpdateEmployeeRequest, UserDTO } from "@shared/types";
 
 const EMPTY_FORM: CreateEmployeeRequest = { name: "", phone: "", username: "", password: "" };
@@ -162,6 +163,7 @@ export default function Employees() {
                           <TableHead>Name</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Username</TableHead>
+                          <TableHead>Added</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -180,6 +182,7 @@ export default function Employees() {
                             </TableCell>
                             <TableCell>{employee.phone}</TableCell>
                             <TableCell className="text-muted-foreground">{employee.username}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(employee.createdAt)}</TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" onClick={() => setEditingEmployee(employee)}>
                                 <Pencil className="h-4 w-4" />
@@ -250,6 +253,7 @@ function EmployeeMobileCard({
       <div className="divide-y divide-border">
         <MobileCardRow label="Phone" value={employee.phone} />
         <MobileCardRow label="Username" value={employee.username} />
+        <MobileCardRow label="Added" value={formatDate(employee.createdAt)} />
       </div>
     </MobileCard>
   );
