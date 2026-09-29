@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createPayment,
   createPaymentSchema,
+  deletePayment,
   getPayment,
   listPayments,
   updatePayment,
@@ -22,5 +23,6 @@ router.post("/", requireRole("EMPLOYEE"), validateBody(createPaymentSchema), cre
 router.get("/:id", getPayment);
 router.patch("/:id", requireRole("DEALER"), validateBody(updatePaymentSchema), updatePayment);
 router.patch("/:id/verify", requireRole("DEALER"), validateBody(verifyPaymentSchema), verifyPayment);
+router.delete("/:id", requireRole("DEALER"), deletePayment);
 
 export default router;

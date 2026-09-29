@@ -22,3 +22,7 @@ export async function verifyPayment(id: string, verified: boolean): Promise<Paym
   const { data } = await api.patch<{ payment: PaymentDTO }>(`/payments/${id}/verify`, { verified });
   return data.payment;
 }
+
+export async function deletePayment(id: string): Promise<void> {
+  await api.delete(`/payments/${id}`);
+}

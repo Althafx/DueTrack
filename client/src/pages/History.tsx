@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { History as HistoryIcon, Search, ShieldCheck, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import { History as HistoryIcon, Search, ShieldCheck, Trash2, Undo2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,10 @@ import { DateRangePicker, type DateRangeValue } from "@/components/shared/DateRa
 import { ConfettiBurst } from "@/components/shared/ConfettiBurst";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingState } from "@/components/shared/LoadingState";
-import { usePayments, useVerifyPayment } from "@/hooks/usePayments";
+import { useConfirm } from "@/components/shared/ConfirmDialogProvider";
+import { useDeletePayment, usePayments, useVerifyPayment } from "@/hooks/usePayments";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { getErrorMessage } from "@/services/api";
 import { formatCurrency, formatDateTime } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { PaymentDTO } from "@shared/types";
@@ -30,6 +33,8 @@ export default function History() {
   const { data: payments, isLoading } = usePayments();
   const { data: currentUser } = useCurrentUser();
   const verifyMutation = useVerifyPayment();
+  const deleteMutation = useDeletePayment();
+  const confirm = useConfirm();
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const [verifyFilter, setVerifyFilter] = useState<VerifyFilter>("ALL");
@@ -87,6 +92,20 @@ export default function History() {
 
   function handleUnverify(payment: PaymentDTO) {
     verifyMutation.mutate({ id: payment.id, verified: false });
+  }
+
+  async function handleDelete(payment: PaymentDTO) {
+    const confirmed = await confirm({
+      title: "Delete payment",
+      description: `Delete this ${formatCurrency(payment.amount)} payment from ${payment.client.name}? The collection's totals will be adjusted accordingly. This cannot be undone.`,
+    });
+    if (!confirmed) return;
+    try {
+      await deleteMutation.mutateAsync({ id: payment.id, collectionId: payment.collection });
+      toast.success("Payment deleted");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
   }
 
   return (
@@ -193,6 +212,19 @@ export default function History() {
                       >
                         <Undo2 className="h-3.5 w-3.5" />
                         Unverify
+                      </Button>
+                    )}
+
+                    {isDealer && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => handleDelete(p)}
+                        aria-label="Delete payment"
+                      >
+                        <Trash2 className="h-4 w-4 text-danger" />
                       </Button>
                     )}
                   </div>

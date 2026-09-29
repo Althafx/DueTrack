@@ -4,6 +4,8 @@ import { findClientById } from "../db/clients";
 import { findCollectionById } from "../db/collections";
 import {
   createPaymentAndUpdateCollection,
+  deletePaymentAndUpdateCollection,
+  deletePaymentOnly,
   findPaymentById,
   findPaymentWithRefs,
   listPaymentsWithRefs,
@@ -161,4 +163,32 @@ export const verifyPayment = asyncHandler(async (req: Request, res: Response) =>
 
   const populated = await findPaymentWithRefs(req.params.id);
   res.json({ payment: toPaymentDTO(populated!) });
+});
+
+export const deletePayment = asyncHandler(async (req: Request, res: Response) => {
+  const payment = await findPaymentById(req.params.id);
+  if (!payment) throw new ApiError(404, "Payment not found");
+
+  // A payment can outlive its collection (dangling-reference pattern used
+  // throughout this app) — if the collection is already gone, just remove
+  // the payment record with no totals to roll back.
+  const collection = payment.collection_id ? await findCollectionById(payment.collection_id) : null;
+
+  if (collection) {
+    const nextReceived = collection.received_amount - payment.amount;
+    const nextRemaining = collection.remaining_amount + payment.amount;
+    const nextStatus = computeStatus(collection.total_amount, nextReceived);
+
+    await deletePaymentAndUpdateCollection({
+      paymentId: payment.id,
+      collectionId: collection.id,
+      nextReceivedAmount: nextReceived,
+      nextRemainingAmount: nextRemaining,
+      nextStatus,
+    });
+  } else {
+    await deletePaymentOnly(payment.id);
+  }
+
+  res.json({ message: "Payment deleted" });
 });

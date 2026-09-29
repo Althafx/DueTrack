@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createPayment, fetchPayments, updatePayment, verifyPayment } from "@/services/payments";
+import { createPayment, deletePayment, fetchPayments, updatePayment, verifyPayment } from "@/services/payments";
 import type { CreatePaymentRequest, UpdatePaymentRequest } from "@shared/types";
 
 export function usePayments(collectionId?: string) {
@@ -48,6 +48,22 @@ export function useVerifyPayment() {
     onSuccess: (payment) => {
       queryClient.invalidateQueries({ queryKey: ["payments", payment.collection] });
       queryClient.invalidateQueries({ queryKey: ["payments", "all"] });
+    },
+  });
+}
+
+export function useDeletePayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; collectionId: string }) => deletePayment(id),
+    onSuccess: (_data, { collectionId }) => {
+      // Deleting rolls back the parent collection's totals too, so
+      // invalidate everywhere that reflects it — same set as a correction.
+      queryClient.invalidateQueries({ queryKey: ["payments", collectionId] });
+      queryClient.invalidateQueries({ queryKey: ["payments", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }

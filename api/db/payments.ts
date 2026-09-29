@@ -247,3 +247,28 @@ export async function setPaymentVerified(id: string, verified: boolean): Promise
     .bind(verified ? 1 : 0, id)
     .run();
 }
+
+export interface DeletePaymentAndUpdateCollectionInput {
+  paymentId: string;
+  collectionId: string;
+  nextReceivedAmount: number;
+  nextRemainingAmount: number;
+  nextStatus: string;
+}
+
+export async function deletePaymentAndUpdateCollection(input: DeletePaymentAndUpdateCollectionInput): Promise<void> {
+  const db = getDB();
+  const updatedAt = new Date().toISOString();
+
+  await db.batch([
+    db.prepare(`DELETE FROM payments WHERE id = ?`).bind(input.paymentId),
+    db
+      .prepare(`UPDATE collections SET received_amount = ?, remaining_amount = ?, status = ?, updated_at = ? WHERE id = ?`)
+      .bind(input.nextReceivedAmount, input.nextRemainingAmount, input.nextStatus, updatedAt, input.collectionId),
+  ]);
+}
+
+export async function deletePaymentOnly(id: string): Promise<void> {
+  const db = getDB();
+  await db.prepare(`DELETE FROM payments WHERE id = ?`).bind(id).run();
+}
